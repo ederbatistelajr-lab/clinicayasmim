@@ -1298,6 +1298,8 @@ const TBL = {
   nts:'notas', prs:'protocolos', pts:'prontuarios',
   rcs:'receitas', fins:'financeiro', ans:'anamneses', fotos:'fotos',
 };
+// Normaliza nome para comparação: remove acentos, lowercase, trim
+const norm=s=>(s||'').toString().toLowerCase().normalize('NFD').replace(/\p{Mn}/gu,'').trim();
 
 // ════════════════════════════════════════════
 //  BANCO DE DADOS (Supabase OU localStorage)
@@ -1362,7 +1364,9 @@ const LS={
 
   findOrCreate(nome){
     let ps=this._get('pacs');
-    let p=ps.find(x=>x.nome.toLowerCase()===nome.toLowerCase());
+    const nQ=norm(nome);
+    // Match exato sem acento, ou parcial (primeiro nome basta)
+    let p=ps.find(x=>norm(x.nome)===nQ)||ps.find(x=>norm(x.nome).includes(nQ)||nQ.includes(norm(x.nome)));
     if(!p){
       p={id:uid(),nome,criado:hhmm(),queixa:'',exames:0,
          telefone:'',email:'',nascimento:'',cpf:'',
@@ -1492,7 +1496,22 @@ async function testarChaveAPI(){
   }
 }
 
-function saveApiKey(){const k=document.getElementById('api-inp').value.trim();if(k){apiKey=k;localStorage.setItem('_yk_api',k);alert('✅ Chave salva! O agente usará IA real.');}else{alert('Chave inválida.');}}
+async function saveApiKey(){
+  const k=document.getElementById('api-inp').value.trim();
+  if(!k){alert('Chave inválida.');return;}
+  apiKey=k;
+  localStorage.setItem('_yk_api',k);
+  let extra='';
+  if(USE_SB){
+    try{
+      const sb=getSB();
+      const{error}=await sb.from('config').upsert({key:'anthropic_api_key',value:k,updated_at:new Date().toISOString()});
+      if(error){extra='\n\n⚠️ Salvou só localmente. Para salvar globalmente (todos os dispositivos), faça login no painel admin antes.\nDetalhe: '+error.message;}
+      else{extra='\n\n✅ Salvou também no Supabase — agora todos os dispositivos vão usar essa chave automaticamente.';}
+    }catch(e){extra='\n\n⚠️ Erro ao salvar no Supabase: '+e.message;}
+  }
+  alert('✅ Chave salva! O agente usará IA real.'+extra);
+}
 function goHome(){
   document.querySelectorAll('.app').forEach(a=>a.classList.remove('active'));
   document.getElementById('landing').style.display='flex';
@@ -1562,11 +1581,18 @@ function escolherPrimeiroContato(){
   initChat();
 }
 
-function escolherJaPaciente(){
+async function escolherJaPaciente(){
   document.getElementById('qr').innerHTML='';
   chatMode='retorno';
   addMsg('💬 Já sou paciente da clínica','user');
   chatHist=[];
+  // Sincroniza lista de pacientes do Supabase antes de abrir o chat
+  // (importante: localStorage local pode estar vazio em outro dispositivo)
+  if(USE_SB){
+    showTyp();
+    try{await LS.syncFrom();}catch(e){console.warn('sync error:',e?.message)}
+    const ty=document.getElementById('ty-el');if(ty)ty.remove();
+  }
   // Inicia chat com IA — modo retorno (busca paciente existente)
   initChat();
 }
@@ -2869,12 +2895,18 @@ Passo 4 — Pergunte o telefone com WhatsApp para contato
 Passo 5 — Confirme os dados com carinho e encerre dizendo: "Perfeito! Já deixei seu contato anotado aqui. A nossa Isa vai entrar em contato com você pelo WhatsApp para confirmar o agendamento com a Dra. Yasmim. Pode deixar que a gente cuida de você 💜"
 Passo 6 — Emita silenciosamente: [NOVO_PAC:{"nome":"X","telefone":"Y","queixa":"Z","cidade":"Limeira|Araraquara"}]
 
-Regras críticas:
-- Cada informação pedida UMA ÚNICA VEZ — não repita o que já foi respondido
-- Se a pessoa já disse a cidade, NÃO pergunte de novo
-- Se a pessoa já disse o objetivo, NÃO pergunte de novo
+CHECKLIST OBRIGATÓRIO antes de cada resposta:
+Releia toda a conversa acima e marque mentalmente:
+[ ] Nome — já foi dito?
+[ ] Cidade (Limeira/Araraquara) — já foi dita?
+[ ] Objetivo (emagrecer, hormônios, performance, etc) — já foi dito?
+[ ] Telefone/WhatsApp — já foi dito?
+
+Pergunte SOMENTE o item que ainda está [ ] não marcado. NUNCA repita pergunta sobre item já marcado [✓].
+
+Outras regras críticas:
 - Não tente agendar diretamente — a Isa humana vai fazer o contato
-- Só emita [NOVO_PAC] quando tiver: nome + telefone + objetivo + cidade`;
+- Só emita [NOVO_PAC] quando todos os 4 itens estiverem [✓]`;
   }
 
   if(chatMode==='retorno'){
@@ -2892,9 +2924,14 @@ Pacientes no sistema:
 
 Como conduzir:
 1. Cumprimente com ${saudacao} e pergunte o nome de forma simpática
-2. Busque na lista (ignore acentos, maiúsculas; aceite nome parcial)
-   Encontrou: emita [PACIENTE:{"nome":"NOME EXATO"}] e cumprimente pelo nome com alegria genuína
-   Não encontrou: "Hmm, não achei seu cadastro aqui não... pode ter sido registrado com outro nome? Ou foi seu primeiro contato conosco?"
+2. BUSCAR NA LISTA (regras fundamentais):
+   - Ignore TOTALMENTE acentos: "Eder Luis" === "Éder Luís"
+   - Ignore maiúsculas/minúsculas
+   - Match PARCIAL é válido: se digitarem só "Eder" e tiver "Eder Luis Batistela Junior" na lista, considere ENCONTRADO
+   - Match também vale se a parte digitada estiver contida no nome cadastrado, ou vice-versa
+   - Se houver vários candidatos com mesmo primeiro nome, peça o sobrenome para desambiguar
+   ENCONTROU: emita [PACIENTE:{"nome":"NOME EXATO COMO ESTÁ NA LISTA"}] e cumprimente pelo nome com alegria genuína. NUNCA invente nome — copie EXATO da lista.
+   NÃO ENCONTROU mesmo após match parcial flexível: "Hmm, não achei seu cadastro aqui não... pode ter sido registrado com outro nome? Ou foi seu primeiro contato conosco?"
 3. Ajude com o que precisar: agendar, cancelar, tirar dúvida, enviar exame
 
 Para agendar (só após confirmar nome, data, horário e cidade):
@@ -2960,7 +2997,8 @@ function execCmds(cmds){let card=null;cmds.forEach(cmd=>{
     // Returning patient — FIND only, do not create if already found via chatPacId
     const nome=cmd.data.nome;
     const pacs=LS.get('pacs');
-    const found=pacs.find(p=>p.nome.toLowerCase()===nome.toLowerCase());
+    const nQ=norm(nome);
+    const found=pacs.find(p=>norm(p.nome)===nQ)||pacs.find(p=>norm(p.nome).includes(nQ)||nQ.includes(norm(p.nome)));
     if(found){chatPacId=found.id;}
     else{// Not found — create as new lead
       const p=LS.findOrCreate(nome);chatPacId=p.id;
@@ -2983,7 +3021,8 @@ function execCmds(cmds){let card=null;cmds.forEach(cmd=>{
     } else {
       // Create brand new patient
       const nome=d.nome||'Novo paciente';
-      const existing=pacs.find(p=>p.nome.toLowerCase()===nome.toLowerCase());
+      const nQ=norm(nome);
+      const existing=pacs.find(p=>norm(p.nome)===nQ);
       if(existing){
         chatPacId=existing.id;
         LS.update('pacs',existing.id,{telefone:d.telefone||existing.telefone||'',queixa:d.queixa||existing.queixa||''});
@@ -4990,7 +5029,23 @@ seedIfEmpty();
     document.getElementById('sb-txt').textContent='Modo local · Configure o Supabase para sincronizar';
   }
 })();
-if(apiKey)document.getElementById('api-inp').value='(salvo)';
+// ── Carrega chave API compartilhada do Supabase (config table) ──
+(async()=>{
+  if(USE_SB){
+    try{
+      const sb=getSB();if(!sb)return;
+      const{data,error}=await sb.from('config').select('value').eq('key','anthropic_api_key').maybeSingle();
+      if(!error && data?.value){
+        apiKey=data.value;
+        localStorage.setItem('_yk_api',apiKey);
+        const inp=document.getElementById('api-inp');
+        if(inp)inp.value='(salvo · via Supabase ✓)';
+        return;
+      }
+    }catch(e){console.warn('config load skipped:',e?.message)}
+  }
+  if(apiKey){const inp=document.getElementById('api-inp');if(inp)inp.value='(salvo localmente)';}
+})();
 setInterval(()=>{if(document.getElementById('admin-app').classList.contains('active')){if(curPage==='pg-home')renderHome();else atualizarBadgeNotif();}},30000);
 </script>
 
