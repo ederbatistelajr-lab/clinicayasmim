@@ -647,7 +647,28 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
         <div id="auth-msg" style="margin-top:10px;font-size:12px;text-align:center;min-height:18px"></div>
         <div style="text-align:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--bdr);font-size:12px;color:var(--muted)">
           Primeira vez? <a onclick="trocarAuthMode('register')" style="color:var(--tl2);font-weight:600;cursor:pointer">Criar conta</a>
+          <br><a onclick="trocarAuthMode('forgot')" style="color:var(--muted);font-size:11.5px;cursor:pointer;display:inline-block;margin-top:6px">Esqueci minha senha</a>
         </div>
+      </div>
+
+      <div id="auth-mode-forgot" style="display:none">
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;text-align:center">Recuperar senha</div>
+        <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-bottom:14px">Vamos enviar um link de recuperação para seu e-mail</div>
+        <div class="fg"><label>E-mail cadastrado</label><input class="fi" id="forgot-email" type="email" placeholder="seu@email.com" autocomplete="email"/></div>
+        <button onclick="enviarRecuperacao()" id="btn-forgot" style="width:100%;padding:13px;background:var(--tl2);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px">📧 Enviar link de recuperação</button>
+        <div id="forgot-msg" style="margin-top:10px;font-size:12px;text-align:center;min-height:18px"></div>
+        <div style="text-align:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--bdr);font-size:12px;color:var(--muted)">
+          <a onclick="trocarAuthMode('login')" style="color:var(--tl2);font-weight:600;cursor:pointer">← Voltar ao login</a>
+        </div>
+      </div>
+
+      <div id="auth-mode-reset" style="display:none">
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;text-align:center">🔑 Definir nova senha</div>
+        <div style="font-size:11.5px;color:var(--muted);text-align:center;margin-bottom:14px">Você foi autenticado pelo link do e-mail. Crie uma senha nova:</div>
+        <div class="fg"><label>Nova senha (mínimo 6 caracteres)</label><input class="fi" id="reset-senha" type="password" placeholder="••••••••" autocomplete="new-password"/></div>
+        <div class="fg"><label>Confirmar nova senha</label><input class="fi" id="reset-senha2" type="password" placeholder="••••••••" autocomplete="new-password"/></div>
+        <button onclick="definirNovaSenha()" id="btn-reset" style="width:100%;padding:13px;background:var(--tl2);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px">💾 Salvar nova senha</button>
+        <div id="reset-msg" style="margin-top:10px;font-size:12px;text-align:center;min-height:18px"></div>
       </div>
       
       <div id="auth-mode-register" style="display:none">
@@ -910,6 +931,18 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
       <button onclick="fecharMaisMenu();goPage('pg-analytics')" style="padding:16px 10px;background:var(--card);border:1px solid var(--bdr);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:inherit">
         <span style="font-size:26px">📈</span>
         <span style="font-size:12px;font-weight:600;color:var(--text)">Relatórios</span>
+      </button>
+      <button onclick="fecharMaisMenu();abrirLembretes()" style="padding:16px 10px;background:var(--card);border:1px solid var(--bdr);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:inherit">
+        <span style="font-size:26px">📩</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text)">Lembretes<br>de amanhã</span>
+      </button>
+      <button onclick="fecharMaisMenu();fazerBackup()" style="padding:16px 10px;background:var(--card);border:1px solid var(--bdr);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:inherit">
+        <span style="font-size:26px">💾</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text)">Backup<br>completo</span>
+      </button>
+      <button onclick="fecharMaisMenu();abrirLogs()" style="padding:16px 10px;background:var(--card);border:1px solid var(--bdr);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:inherit;grid-column:1/-1">
+        <span style="font-size:26px">📋</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text)">Histórico de alterações (auditoria)</span>
       </button>
     </div>
   </div>
@@ -1261,6 +1294,40 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   </div>
 </div>
 
+<!-- MODAL LEMBRETES (Item 5) -->
+<div id="lembretes-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;align-items:flex-end;justify-content:center" onclick="if(event.target===this)fecharLembretes()">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:430px;max-height:92dvh;overflow-y:auto">
+    <div style="padding:14px 18px 6px;position:sticky;top:0;background:#fff;border-bottom:1px solid var(--bdr);z-index:2">
+      <div style="width:40px;height:4px;background:var(--bdr);border-radius:2px;margin:0 auto 10px"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--text)">📩 Lembretes de amanhã</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:2px" id="lembretes-data">—</div>
+        </div>
+        <button onclick="fecharLembretes()" style="background:var(--bg);border:none;width:32px;height:32px;border-radius:50%;font-size:18px;color:var(--muted);cursor:pointer">×</button>
+      </div>
+    </div>
+    <div style="padding:12px 14px 18px" id="lembretes-list"></div>
+  </div>
+</div>
+
+<!-- MODAL LOGS DE AUDITORIA (Item 7) -->
+<div id="logs-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;align-items:flex-end;justify-content:center" onclick="if(event.target===this)fecharLogs()">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:430px;max-height:92dvh;overflow-y:auto">
+    <div style="padding:14px 18px 6px;position:sticky;top:0;background:#fff;border-bottom:1px solid var(--bdr);z-index:2">
+      <div style="width:40px;height:4px;background:var(--bdr);border-radius:2px;margin:0 auto 10px"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--text)">📋 Histórico de alterações</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Últimas 200 ações no sistema</div>
+        </div>
+        <button onclick="fecharLogs()" style="background:var(--bg);border:none;width:32px;height:32px;border-radius:50%;font-size:18px;color:var(--muted);cursor:pointer">×</button>
+      </div>
+    </div>
+    <div style="padding:12px 14px 18px" id="logs-list"></div>
+  </div>
+</div>
+
 <!-- MSG SHEET -->
 <div class="msg-overlay" id="msg-overlay" onclick="if(event.target===this)closeMsg()">
   <div class="msg-sheet">
@@ -1318,8 +1385,13 @@ const LS={
     // Always update localStorage
     let l=this._get(k);
     const i=l.findIndex(x=>x.id===row.id);
+    const isNew=i<0;
     if(i>=0)l[i]={...l[i],...row};else l.push(row);
     this._set(k,l);
+    // ITEM 7: auditoria
+    if(typeof logAudit==='function'&&TBL[k]){
+      logAudit(isNew?'create':'update',TBL[k],row.id,null);
+    }
     // Sync to Supabase in background
     if(USE_SB&&TBL[k]){
       const tbl=TBL[k];
@@ -1349,6 +1421,8 @@ const LS={
         if(error)console.warn('Supabase update error:',TBL[k],error.message);
       });
     }
+    // ITEM 7: auditoria
+    if(typeof logAudit==='function'&&TBL[k])logAudit('update',TBL[k],id,fields);
   },
 
   del(k,id){
@@ -1358,6 +1432,8 @@ const LS={
         if(error)console.warn('Supabase delete error:',TBL[k],error.message);
       });
     }
+    // ITEM 7: auditoria
+    if(typeof logAudit==='function'&&TBL[k])logAudit('delete',TBL[k],id,null);
   },
 
   where(k,col,val){return this._get(k).filter(x=>x[col]===val)},
@@ -3162,6 +3238,19 @@ function uploadPerfil(input){
 // ════════════════════════════════════════════
 //  FOTOS
 // ════════════════════════════════════════════
+// ITEM 1: Sobe foto para Supabase Storage (se disponível) e cai para base64 se falhar
+async function uploadFotoStorage(blob,pacId){
+  if(!USE_SB)return null;
+  try{
+    const sb=getSB();
+    const fname=`${pacId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.jpg`;
+    const{error}=await sb.storage.from('fotos').upload(fname,blob,{contentType:'image/jpeg',cacheControl:'31536000'});
+    if(error){console.warn('storage upload failed:',error.message);return null;}
+    const{data}=sb.storage.from('fotos').getPublicUrl(fname);
+    return data?.publicUrl||null;
+  }catch(e){console.warn('storage exception:',e.message);return null;}
+}
+
 function uploadFoto(input){
   const file=input.files[0];if(!file)return;input.value='';
   const pose=window._fotoPose||'';
@@ -3169,7 +3258,7 @@ function uploadFoto(input){
   const reader=new FileReader();
   reader.onload=e=>{
     const img=new Image();
-    img.onload=()=>{
+    img.onload=async()=>{
       const canvas=document.createElement('canvas');
       const maxW=1200;
       const scale=Math.min(1,maxW/img.width);
@@ -3181,7 +3270,12 @@ function uploadFoto(input){
       const defaultLeg=pose?`${poses[pose]} — ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}`:'Foto clínica';
       const legenda=prompt('Legenda da foto:',defaultLeg);
       if(legenda===null)return;
-      LS.upsert('fotos',{id:uid(),pac_id:detPacId,base64,legenda,tipo:'evolucao',pose,prontuario_id:prontId,data:todayISO()});
+      // Tenta subir para Storage primeiro (economia gigante de espaço no banco)
+      const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.82));
+      const storageUrl=blob?await uploadFotoStorage(blob,detPacId):null;
+      // Se Storage funcionou, guarda só a URL (~200 bytes) em vez do base64 (~500KB)
+      // Campo 'base64' mantém o nome por compatibilidade — pode conter URL ou data:image
+      LS.upsert('fotos',{id:uid(),pac_id:detPacId,base64:storageUrl||base64,legenda,tipo:'evolucao',pose,prontuario_id:prontId,data:todayISO(),storage:!!storageUrl});
       window._fotoLabel='';window._fotoPose='';window._fotoProntId=null;
       if(document.getElementById('pf-fotos-preview'))renderProntFotosPreview();
       else renderDetContent();
@@ -3459,10 +3553,61 @@ async function checkAuth(){
 }
 
 function trocarAuthMode(mode){
-  document.getElementById('auth-mode-login').style.display=mode==='login'?'block':'none';
-  document.getElementById('auth-mode-register').style.display=mode==='register'?'block':'none';
-  document.getElementById('auth-msg').textContent='';
-  document.getElementById('reg-msg').textContent='';
+  ['login','register','forgot','reset'].forEach(m=>{
+    const el=document.getElementById('auth-mode-'+m);
+    if(el)el.style.display=mode===m?'block':'none';
+  });
+  ['auth-msg','reg-msg','forgot-msg','reset-msg'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
+}
+
+// ── ITEM 4: RECUPERAÇÃO DE SENHA ──
+async function enviarRecuperacao(){
+  const email=document.getElementById('forgot-email').value.trim();
+  const msg=document.getElementById('forgot-msg');
+  const btn=document.getElementById('btn-forgot');
+  if(!email){msg.style.color='var(--red)';msg.textContent='Digite o e-mail cadastrado';return;}
+  btn.disabled=true;btn.textContent='Enviando...';
+  msg.style.color='var(--muted)';msg.textContent='';
+  try{
+    const sb=getSB();
+    const redirectTo=window.location.origin+window.location.pathname;
+    const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo});
+    if(error)throw error;
+    msg.style.color='var(--green)';
+    msg.innerHTML='✅ Link enviado para <strong>'+email+'</strong><br>Verifique sua caixa de entrada (e a pasta de spam).';
+    btn.textContent='✓ Enviado';
+  }catch(e){
+    msg.style.color='var(--red)';
+    msg.textContent='Erro: '+e.message;
+    btn.disabled=false;btn.textContent='📧 Enviar link de recuperação';
+  }
+}
+
+async function definirNovaSenha(){
+  const s1=document.getElementById('reset-senha').value;
+  const s2=document.getElementById('reset-senha2').value;
+  const msg=document.getElementById('reset-msg');
+  const btn=document.getElementById('btn-reset');
+  if(!s1||s1.length<6){msg.style.color='var(--red)';msg.textContent='Senha precisa ter no mínimo 6 caracteres';return;}
+  if(s1!==s2){msg.style.color='var(--red)';msg.textContent='Senhas não coincidem';return;}
+  btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    const sb=getSB();
+    const{error}=await sb.auth.updateUser({password:s1});
+    if(error)throw error;
+    msg.style.color='var(--green)';
+    msg.textContent='✅ Senha alterada! Redirecionando...';
+    // Limpa hash do recovery e vai pro admin
+    if(window.location.hash)history.replaceState(null,'',window.location.pathname);
+    setTimeout(()=>{
+      document.getElementById('auth-screen').style.display='none';
+      entrarAdminPosLogin();
+    },1000);
+  }catch(e){
+    msg.style.color='var(--red)';
+    msg.textContent='Erro: '+e.message;
+    btn.disabled=false;btn.textContent='💾 Salvar nova senha';
+  }
 }
 
 function mostrarTelaAuth(){
@@ -5004,6 +5149,157 @@ function renderAnalytics(){
 }
 
 // ════════════════════════════════════════════
+//  ITEM 7: AUDITORIA — LOG DE ALTERAÇÕES
+// ════════════════════════════════════════════
+async function logAudit(action,table,recordId,changes){
+  if(!USE_SB||!_currentUser)return;
+  try{
+    const sb=getSB();
+    await sb.from('audit_log').insert({
+      user_email:_currentUser.email||'desconhecido',
+      action,table_name:table,record_id:String(recordId||''),
+      changes:changes||null
+    });
+  }catch(e){/* silencioso — não bloquear UX */}
+}
+
+function abrirLogs(){
+  if(!USE_SB||!_currentUser){alert('Faça login no painel admin para ver o histórico');return;}
+  const ov=document.getElementById('logs-overlay');
+  ov.style.display='flex';
+  carregarLogs();
+}
+function fecharLogs(){document.getElementById('logs-overlay').style.display='none';}
+
+async function carregarLogs(){
+  const cont=document.getElementById('logs-list');
+  cont.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px"><div class="ms-spin" style="margin:0 auto 10px"></div>Carregando histórico...</div>';
+  try{
+    const sb=getSB();
+    const{data,error}=await sb.from('audit_log').select('*').order('created_at',{ascending:false}).limit(200);
+    if(error)throw error;
+    if(!data||!data.length){cont.innerHTML='<div class="empty">Nenhum registro de alteração ainda.</div>';return;}
+    const actEmoji={create:'➕',update:'✏️',delete:'🗑️'};
+    const tableLabels={pacientes:'Paciente',agendamentos:'Consulta',prontuarios:'Prontuário',receitas:'Receita',financeiro:'Financeiro',protocolos:'Protocolo',exames:'Exame',anamneses:'Anamnese',fotos:'Foto',notas:'Nota',config:'Configuração'};
+    cont.innerHTML=data.map(l=>{
+      const dt=new Date(l.created_at);
+      const dtStr=dt.toLocaleDateString('pt-BR')+' às '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      return `<div style="background:var(--card);border:1px solid var(--bdr);border-radius:10px;padding:11px 13px;margin-bottom:7px">
+        <div style="display:flex;gap:8px;align-items:start">
+          <span style="font-size:18px">${actEmoji[l.action]||'•'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12.5px;font-weight:600;color:var(--text)">${l.action==='create'?'Criou':l.action==='update'?'Editou':'Excluiu'} ${tableLabels[l.table_name]||l.table_name}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">por ${l.user_email} · ${dtStr}</div>
+            ${l.record_id?`<div style="font-size:10.5px;color:var(--muted);margin-top:2px;font-family:monospace">ID: ${l.record_id.slice(0,12)}…</div>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    cont.innerHTML='<div class="empty" style="color:var(--red)">Erro ao carregar logs: '+e.message+'<br><br>Verifique se a tabela <code>audit_log</code> foi criada no Supabase.</div>';
+  }
+}
+
+// ════════════════════════════════════════════
+//  ITEM 3: BACKUP COMPLETO
+// ════════════════════════════════════════════
+async function fazerBackup(){
+  if(!USE_SB){alert('Backup requer Supabase conectado');return;}
+  if(!confirm('Fazer download do backup completo da clínica?\n\nIsso vai gerar um arquivo .json com TODOS os dados: pacientes, consultas, prontuários, receitas, financeiro, etc.\n\nGuarde esse arquivo em local seguro (HD externo, Google Drive, etc).'))return;
+  try{
+    const sb=getSB();
+    const tabelas=['pacientes','agendamentos','prontuarios','receitas','protocolos','exames','anamneses','financeiro','fotos','notas','config'];
+    const backup={
+      _meta:{
+        clinica:'Dra. Yasmim Aires',
+        gerado_em:new Date().toISOString(),
+        gerado_por:_currentUser?.email||'desconhecido',
+        versao:1
+      }
+    };
+    for(const t of tabelas){
+      const{data,error}=await sb.from(t).select('*');
+      if(error){console.warn('backup '+t+':',error.message);backup[t]=[];}
+      else backup[t]=data||[];
+    }
+    const json=JSON.stringify(backup,null,2);
+    const blob=new Blob([json],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const hoje=todayISO();
+    a.href=url;a.download=`backup-clinica-yasmim-${hoje}.json`;
+    document.body.appendChild(a);a.click();a.remove();
+    URL.revokeObjectURL(url);
+    // Conta totais
+    const totais=Object.keys(backup).filter(k=>k!=='_meta').map(k=>`${k}: ${backup[k].length}`).join('\n');
+    alert(`✅ Backup gerado!\n\nArquivo: backup-clinica-yasmim-${hoje}.json\n\nConteúdo:\n${totais}\n\n💡 Recomendo fazer backup semanal e guardar em local seguro.`);
+    logAudit('create','audit_log','backup',{tabelas:Object.keys(backup).length-1});
+  }catch(e){alert('Erro ao gerar backup: '+e.message);}
+}
+
+// ════════════════════════════════════════════
+//  ITEM 5: LEMBRETES DE CONSULTA (envio manual via WhatsApp)
+// ════════════════════════════════════════════
+function abrirLembretes(){
+  const ov=document.getElementById('lembretes-overlay');
+  ov.style.display='flex';
+  renderLembretes();
+}
+function fecharLembretes(){document.getElementById('lembretes-overlay').style.display='none';}
+
+function renderLembretes(){
+  const amanha=addDays(todayISO(),1);
+  const ags=LS.get('ags').filter(a=>a.data===amanha&&a.status!=='cancelado').sort((a,b)=>a.hora>b.hora?1:-1);
+  const pacs=LS.get('pacs');
+  const cont=document.getElementById('lembretes-list');
+  const dtLabel=new Date(amanha+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  document.getElementById('lembretes-data').textContent=dtLabel;
+  if(!ags.length){
+    cont.innerHTML='<div class="empty" style="padding:30px 18px"><div style="font-size:40px;margin-bottom:10px">📭</div><div style="font-size:14px;font-weight:600;color:var(--text)">Nenhuma consulta para amanhã</div><div style="font-size:12px;color:var(--muted);margin-top:5px">'+dtLabel+'</div></div>';
+    return;
+  }
+  cont.innerHTML=ags.map(a=>{
+    const pac=pacs.find(p=>p.id===a.pac_id);
+    const nome=pac?pac.nome:a.nome||'?';
+    const primeiroNome=nome.split(' ')[0];
+    const tel=(pac?.telefone||'').replace(/\D/g,'');
+    const local=a.tipo==='presencial-araraquara'?'Araraquara':'Limeira';
+    const enderecoMap={'Limeira':'R. João Kuhl Filho, 101 - Vila São João','Araraquara':'Rua Roland Lupo, 231 - Vila Xavier'};
+    const msg=`Olá, ${primeiroNome}! 💜\n\nPassando aqui só para lembrar da sua consulta com a Dra. Yasmim Aires amanhã, ${dtLabel}, às ${a.hora}.\n\n📍 Unidade ${local}\n${enderecoMap[local]}\n\nPode confirmar sua presença? 😊\n\nAté breve!\nIsa - Secretária Dra. Yasmim`;
+    const waLink=tel?`https://wa.me/55${tel.replace(/^55/,'')}?text=${encodeURIComponent(msg)}`:'';
+    const semTel=!tel;
+    return `<div style="background:var(--card);border:1px solid var(--bdr);border-radius:11px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--tl4);color:var(--tl2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${initials(nome)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${nome}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px">${a.hora} · 🏥 ${local}${tel?' · 📞 '+tel:''}</div>
+        </div>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:9px 11px;font-size:11.5px;color:var(--text);line-height:1.55;white-space:pre-wrap;max-height:100px;overflow-y:auto">${msg}</div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        ${semTel
+          ?'<div style="flex:1;padding:9px;background:#fee2e2;color:#991b1b;border-radius:8px;font-size:11.5px;font-weight:600;text-align:center">⚠️ Sem telefone cadastrado</div>'
+          :`<a href="${waLink}" target="_blank" rel="noopener" style="flex:1;padding:9px;background:#25d366;color:#fff;border-radius:8px;font-size:11.5px;font-weight:700;text-align:center;text-decoration:none;font-family:inherit">📱 Enviar WhatsApp</a>`}
+        <button onclick="copiarLembrete(this,'${a.id}')" style="padding:9px 14px;background:var(--tl4);color:var(--tl2);border:none;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">📋 Copiar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function copiarLembrete(btn,agId){
+  const amanha=addDays(todayISO(),1);
+  const a=LS.get('ags').find(x=>x.id===agId);if(!a)return;
+  const pac=LS.get('pacs').find(p=>p.id===a.pac_id);
+  const nome=pac?pac.nome:a.nome||'?';
+  const primeiroNome=nome.split(' ')[0];
+  const local=a.tipo==='presencial-araraquara'?'Araraquara':'Limeira';
+  const enderecoMap={'Limeira':'R. João Kuhl Filho, 101 - Vila São João','Araraquara':'Rua Roland Lupo, 231 - Vila Xavier'};
+  const dtLabel=new Date(amanha+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+  const msg=`Olá, ${primeiroNome}! 💜\n\nPassando aqui só para lembrar da sua consulta com a Dra. Yasmim Aires amanhã, ${dtLabel}, às ${a.hora}.\n\n📍 Unidade ${local}\n${enderecoMap[local]}\n\nPode confirmar sua presença? 😊\n\nAté breve!\nIsa - Secretária Dra. Yasmim`;
+  navigator.clipboard.writeText(msg).then(()=>{btn.textContent='✓ Copiado';setTimeout(()=>{btn.textContent='📋 Copiar'},1500);});
+}
+
+// ════════════════════════════════════════════
 //  PWA INSTALL
 // ════════════════════════════════════════════
 let _pwaPrompt=null;
@@ -5038,6 +5334,22 @@ seedIfEmpty();
     document.getElementById('sb-indicator').style.color='#94a3b8';
     document.getElementById('sb-txt').textContent='Modo local · Configure o Supabase para sincronizar';
   }
+})();
+// ── ITEM 4: Detecta retorno do link de recuperação de senha ──
+(function(){
+  if(!USE_SB||!window.supabase)return;
+  try{
+    const sb=getSB();if(!sb)return;
+    sb.auth.onAuthStateChange((event,session)=>{
+      if(event==='PASSWORD_RECOVERY'){
+        // Usuário clicou no link do e-mail — mostra tela de nova senha
+        document.getElementById('landing').style.display='none';
+        document.getElementById('auth-screen').style.display='flex';
+        trocarAuthMode('reset');
+        setTimeout(()=>document.getElementById('reset-senha').focus(),200);
+      }
+    });
+  }catch(e){console.warn('auth listener skipped:',e?.message);}
 })();
 // ── Carrega chave API compartilhada do Supabase (config table) ──
 (async()=>{
