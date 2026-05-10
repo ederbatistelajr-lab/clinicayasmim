@@ -470,14 +470,35 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   body:not(.admin-active) .app-wrapper{display:contents}
   body.admin-active .landing{display:none!important}
   
-  /* App central */
+  /* App central — horizontal no desktop, mais espaço para conteúdo */
   .app{
-    width:430px;min-width:430px;max-width:430px;
+    width:720px;min-width:720px;max-width:720px;
     height:calc(100dvh - 48px);
     border-radius:24px;
     box-shadow:0 10px 40px rgba(0,0,0,.3);
     overflow:hidden;
     flex-shrink:0;
+  }
+  /* Cabeçalho do topo na largura completa do app */
+  .topbar{padding-left:32px;padding-right:32px}
+  .topbar::after{right:-40px;width:200px;height:200px}
+  /* Stats em 4 colunas no desktop (em vez de 2x2) */
+  .stats{grid-template-columns:repeat(4,1fr)}
+  /* Ações rápidas continuam em 4 colunas mas com mais espaço */
+  .det-stats{padding:16px 22px}
+  /* Listas de pacientes e agendamentos com 2 colunas no desktop */
+  #pac-list,#ag-list,#fin-list,#est-list{
+    display:grid;grid-template-columns:1fr 1fr;gap:0 6px;padding:0 8px;
+  }
+  .pac-card,.ag-card,.fin-card,.alert-card{margin:0 6px 9px}
+  /* Stats financeiro em 3 colunas (já é, mas com mais espaço) */
+  .fin-stats{padding:14px 22px 2px}
+  /* Form sections com 2 colunas para campos */
+  .form-sec{padding:0 22px 16px}
+  /* Modais maiores no desktop */
+  .msg-overlay,#novo-pac-overlay,#novo-ag-overlay,#nova-rec-overlay,#novo-fin-overlay,#novo-item-overlay,#nfe-preview-overlay,#manage-admins-overlay,#lembretes-overlay,#logs-overlay,#mais-menu-overlay{align-items:center!important}
+  .msg-overlay .msg-sheet,#novo-pac-overlay>div,#novo-ag-overlay>div,#nova-rec-overlay>div,#novo-fin-overlay>div,#novo-item-overlay>div,#nfe-preview-overlay>div,#manage-admins-overlay>div,#lembretes-overlay>div,#logs-overlay>div,#mais-menu-overlay>div{
+    border-radius:18px!important;max-width:560px!important;
   }
   
   /* Painéis laterais — largura mínima garantida */
@@ -709,6 +730,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     <button class="att-btn" onclick="document.getElementById('finput').click()" title="Enviar exame">📎</button>
     <input type="file" id="perfil-input" accept="image/*" style="display:none" onchange="uploadPerfil(this)"/>
 <input type="file" id="foto-input" accept="image/*" style="display:none" onchange="uploadFoto(this)"/>
+<input type="file" id="foto-replace-input" accept="image/*" style="display:none" onchange="processarSubstituicaoFoto(this)"/>
 <input type="file" id="finput" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" onchange="uploadExam(this)"/>
     <input id="inp" type="text" placeholder="Digite uma mensagem..." autocomplete="off" onkeydown="if(event.key==='Enter')send()"/>
     <button class="snd" onclick="send()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
@@ -1036,7 +1058,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
         </select>
       </div>
       <div class="fg"><label>Forma de pagamento *</label>
-        <select class="fi" id="nfin-pgto" onchange="togglePgto()">
+        <select class="fi" id="nfin-pgto" onchange="toggleParcelasBox()">
           <option value="">Selecione...</option>
           <option value="pix">💚 PIX</option>
           <option value="dinheiro">💵 Dinheiro</option>
@@ -1127,14 +1149,24 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     </div>
     <div style="padding:14px 18px 24px">
       <div style="background:var(--tl4);border-radius:11px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--tl2);line-height:1.6">
-        💡 <strong>Como funciona:</strong> Ao adicionar um novo admin, um e-mail de convite é enviado. A pessoa define a própria senha ao primeiro acesso.
+        💡 <strong>Perfis de acesso:</strong><br>
+        • <strong>Admin</strong>: acesso total ao sistema<br>
+        • <strong>Médica</strong>: tudo exceto financeiro detalhado e gerenciar acessos<br>
+        • <strong>Secretária</strong>: pacientes, agenda, lembretes e follow-up
       </div>
 
       <div class="fg"><label>Nome completo</label><input class="fi" id="new-admin-nome" placeholder="Dra. Yasmim Aires" autocomplete="off"/></div>
       <div class="fg"><label>E-mail *</label><input class="fi" id="new-admin-email" type="email" placeholder="admin@clinica.com" autocomplete="off"/></div>
       <div class="fg"><label>Senha temporária * (mínimo 6 caracteres)</label><input class="fi" id="new-admin-senha" type="password" placeholder="Senha inicial" autocomplete="new-password"/></div>
+      <div class="fg"><label>Perfil de acesso *</label>
+        <select class="fi" id="new-admin-role">
+          <option value="admin">👑 Admin (acesso total)</option>
+          <option value="medica">👩‍⚕️ Médica (sem financeiro/acessos)</option>
+          <option value="secretaria" selected>💼 Secretária (sem financeiro/acessos/prontuários)</option>
+        </select>
+      </div>
 
-      <button onclick="criarNovoAdmin()" id="btn-create-admin" style="width:100%;padding:13px;background:var(--tl2);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px">+ Criar novo administrador</button>
+      <button onclick="criarNovoAdmin()" id="btn-create-admin" style="width:100%;padding:13px;background:var(--tl2);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px">+ Criar novo usuário</button>
 
       <div id="new-admin-msg" style="margin-top:10px;font-size:12px;text-align:center;min-height:18px"></div>
 
@@ -1143,6 +1175,11 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
         <div id="current-user-info" style="background:var(--bg);border-radius:10px;padding:12px;font-size:12.5px">
           —
         </div>
+      </div>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--bdr)">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Usuários cadastrados</div>
+        <div id="admin-list" style="display:flex;flex-direction:column;gap:6px"></div>
       </div>
     </div>
   </div>
@@ -2211,7 +2248,7 @@ function renderDetContent(){
           const costas=sess.find(f=>f.pose==='costas');
           const semPose=sess.filter(f=>!f.pose);
           const empty=`<div style="background:var(--bg);aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;border:2px dashed var(--bdr);color:var(--muted)">—</div>`;
-          const cell=(f,pose)=>f?`<div style="position:relative"><img src="${f.base64}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1.5px solid var(--bdr);cursor:pointer" onclick="viewFoto('${f.id}')"/><div style="position:absolute;bottom:4px;left:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;padding:2px 0;text-align:center;border-radius:4px;font-weight:600">${poseLabels[pose].split(' ')[0]} ${pose}</div><button onclick="event.stopPropagation();if(confirm('Excluir foto?')){LS.del('fotos','${f.id}');renderDetContent()}" style="position:absolute;top:4px;right:4px;background:rgba(239,68,68,.9);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:12px;font-weight:700">×</button></div>`:empty;
+          const cell=(f,pose)=>f?`<div style="position:relative"><img src="${f.base64}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1.5px solid var(--bdr);cursor:pointer" onclick="viewFoto('${f.id}')"/><div style="position:absolute;bottom:4px;left:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;padding:2px 0;text-align:center;border-radius:4px;font-weight:600">${poseLabels[pose].split(' ')[0]} ${pose}</div><button onclick="event.stopPropagation();substituirFoto('${f.id}')" title="Substituir foto" style="position:absolute;top:4px;left:4px;background:rgba(15,118,110,.9);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;font-weight:700">↻</button><button onclick="event.stopPropagation();if(confirm('Excluir foto?')){LS.del('fotos','${f.id}');renderDetContent()}" title="Excluir foto" style="position:absolute;top:4px;right:4px;background:rgba(239,68,68,.9);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:12px;font-weight:700">×</button></div>`:empty;
           return`<div style="background:var(--card);border:1px solid var(--bdr);border-radius:12px;padding:12px;margin-bottom:10px">
             <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
               <span>📅 ${fmtDS(data)}</span>
@@ -2222,7 +2259,7 @@ function renderDetContent(){
               ${cell(lado,'lado')}
               ${cell(costas,'costas')}
             </div>
-            ${semPose.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr)"><div style="font-size:10.5px;color:var(--muted);margin-bottom:5px">Fotos avulsas desta sessão:</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">${semPose.map(f=>`<div style="position:relative"><img src="${f.base64}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="viewFoto('${f.id}')"/><button onclick="event.stopPropagation();if(confirm('Excluir foto?')){LS.del('fotos','${f.id}');renderDetContent()}" style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,.9);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px">×</button></div>`).join('')}</div></div>`:''}
+            ${semPose.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr)"><div style="font-size:10.5px;color:var(--muted);margin-bottom:5px">Fotos avulsas desta sessão:</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">${semPose.map(f=>`<div style="position:relative"><img src="${f.base64}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="viewFoto('${f.id}')"/><button onclick="event.stopPropagation();substituirFoto('${f.id}')" title="Substituir" style="position:absolute;top:2px;left:2px;background:rgba(15,118,110,.9);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:9px;font-weight:700">↻</button><button onclick="event.stopPropagation();if(confirm('Excluir foto?')){LS.del('fotos','${f.id}');renderDetContent()}" style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,.9);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px">×</button></div>`).join('')}</div></div>`:''}
           </div>`;
         }).join('')}
       </div>`;
@@ -3290,6 +3327,41 @@ function viewFoto(id){
   pa.innerHTML=`<div style="background:#000;inset:0;position:fixed;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999"><img src="${f.base64}" style="max-width:100%;max-height:85vh;object-fit:contain"/><div style="color:#fff;margin-top:12px;font-size:13px">${f.legenda} · ${fmtD(f.data)}</div><button onclick="document.getElementById('print-area').style.display='none'" style="margin-top:12px;padding:10px 24px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:10px;font-size:13px;cursor:pointer">Fechar</button></div>`;
 }
 
+// Substituir foto existente (item 2)
+function substituirFoto(fotoId){
+  window._fotoSubstituirId=fotoId;
+  document.getElementById('foto-replace-input').click();
+}
+function processarSubstituicaoFoto(input){
+  const file=input.files[0];if(!file)return;input.value='';
+  const fotoId=window._fotoSubstituirId;
+  if(!fotoId)return;
+  const fotoOriginal=LS.get('fotos').find(f=>f.id===fotoId);
+  if(!fotoOriginal){alert('Foto não encontrada');return;}
+  if(!confirm('Substituir esta foto pela nova? A versão antiga será removida.'))return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=async()=>{
+      const canvas=document.createElement('canvas');
+      const maxW=1200;
+      const scale=Math.min(1,maxW/img.width);
+      canvas.width=img.width*scale;
+      canvas.height=img.height*scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      const base64=canvas.toDataURL('image/jpeg',0.82);
+      const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.82));
+      const storageUrl=blob?await uploadFotoStorage(blob,fotoOriginal.pac_id):null;
+      LS.update('fotos',fotoId,{base64:storageUrl||base64,storage:!!storageUrl,data:fotoOriginal.data});
+      window._fotoSubstituirId=null;
+      renderDetContent();
+      alert('✅ Foto substituída!');
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 // ════════════════════════════════════════════
 //  PROTOCOLO — TIMER
 // ════════════════════════════════════════════
@@ -3703,6 +3775,8 @@ async function entrarAdminPosLogin(){
     const tb=document.getElementById('tb-date');
     if(tb)tb.textContent='Sincronizando...';
     await LS.syncFrom();
+    // Carrega perfil/role do usuário e aplica permissões (item 4)
+    await carregarPerfilUsuario();
   }
   renderHome();
 }
@@ -4576,26 +4650,116 @@ function marcarTodasLidas(){
 // ════════════════════════════════════════════
 //  GERENCIAR ADMINISTRADORES
 // ════════════════════════════════════════════
+// ════════════════════════════════════════════
+//  ITEM 4 (multi-níveis): perfis de acesso
+// ════════════════════════════════════════════
+let _userRole='admin';
+const ROLE_LABELS={admin:'👑 Admin',medica:'👩‍⚕️ Médica',secretaria:'💼 Secretária'};
+const ROLE_PERMS={
+  admin:{financeiro:true,prontuarios:true,gerenciar_admins:true,estoque:true,relatorios:true},
+  medica:{financeiro:false,prontuarios:true,gerenciar_admins:false,estoque:true,relatorios:true},
+  secretaria:{financeiro:false,prontuarios:false,gerenciar_admins:false,estoque:true,relatorios:false},
+};
+function can(perm){return !!(ROLE_PERMS[_userRole||'admin']?.[perm]);}
+
+async function carregarPerfilUsuario(){
+  if(!_currentUser||!USE_SB){_userRole='admin';return;}
+  try{
+    const sb=getSB();
+    const{data,error}=await sb.from('user_profiles').select('role').eq('id',_currentUser.id).maybeSingle();
+    if(!error && data?.role)_userRole=data.role;
+    else{
+      // Primeiro login — cria perfil automaticamente como admin (primeiro usuário)
+      _userRole='admin';
+      await sb.from('user_profiles').upsert({
+        id:_currentUser.id,
+        email:_currentUser.email,
+        nome:_currentUser.user_metadata?.nome||_currentUser.email.split('@')[0],
+        role:'admin'
+      });
+    }
+  }catch(e){console.warn('carregar perfil:',e.message);_userRole='admin';}
+  aplicarPermissoes();
+}
+
+function aplicarPermissoes(){
+  // Esconde itens conforme perfil
+  document.querySelectorAll('[data-perm]').forEach(el=>{
+    el.style.display=can(el.dataset.perm)?'':'none';
+  });
+  // Esconde botões específicos no nav inferior se não tem permissão
+  const niFin=document.getElementById('ni-fin');if(niFin)niFin.style.display=can('financeiro')?'':'none';
+  // Esconde botão de gerenciar admins se não pode
+  document.querySelectorAll('[onclick*="abrirGerenciarAdmins"]').forEach(b=>{
+    b.style.display=can('gerenciar_admins')?'':'none';
+  });
+}
+
 function abrirGerenciarAdmins(){
+  if(!can('gerenciar_admins')){alert('⚠️ Você não tem permissão para gerenciar acessos.');return;}
   document.getElementById('new-admin-nome').value='';
   document.getElementById('new-admin-email').value='';
   document.getElementById('new-admin-senha').value='';
+  document.getElementById('new-admin-role').value='secretaria';
   document.getElementById('new-admin-msg').textContent='';
   // Show current user
   const nome=_currentUser?.user_metadata?.nome||_currentUser?.email?.split('@')[0]||'—';
   const email=_currentUser?.email||'—';
-  document.getElementById('current-user-info').innerHTML=`<strong>${nome}</strong><br><span style="color:var(--muted);font-size:11.5px">${email}</span>`;
+  const roleLabel=ROLE_LABELS[_userRole]||_userRole;
+  document.getElementById('current-user-info').innerHTML=`<strong>${nome}</strong> <span style="background:var(--tl4);color:var(--tl2);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;margin-left:6px">${roleLabel}</span><br><span style="color:var(--muted);font-size:11.5px">${email}</span>`;
   document.getElementById('manage-admins-overlay').style.display='flex';
+  carregarListaAdmins();
 }
 
 function fecharGerenciarAdmins(){
   document.getElementById('manage-admins-overlay').style.display='none';
 }
 
+async function carregarListaAdmins(){
+  const cont=document.getElementById('admin-list');
+  cont.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px">Carregando...</div>';
+  try{
+    const sb=getSB();
+    const{data,error}=await sb.from('user_profiles').select('*').order('created_at',{ascending:true});
+    if(error)throw error;
+    if(!data||!data.length){cont.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px">Nenhum usuário ainda</div>';return;}
+    cont.innerHTML=data.map(u=>{
+      const isMe=u.id===_currentUser?.id;
+      const roleEsc=u.role.replace(/'/g,"\\'");
+      return `<div style="background:var(--bg);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:9px">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--tl4);color:var(--tl2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">${initials(u.nome||u.email)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px">${u.nome||'—'}${isMe?' <span style="font-size:10px;color:var(--tl2);font-weight:500">(você)</span>':''}</div>
+          <div style="font-size:11px;color:var(--muted)">${u.email||'—'}</div>
+        </div>
+        ${isMe?`<span style="background:var(--tl4);color:var(--tl2);padding:3px 9px;border-radius:7px;font-size:11px;font-weight:600">${ROLE_LABELS[u.role]||u.role}</span>`
+          :`<select onchange="alterarPerfilUsuario('${u.id}',this.value)" style="border:1.5px solid var(--bdr);border-radius:7px;padding:4px 7px;font-size:11.5px;background:#fff;cursor:pointer;font-family:inherit">
+            <option value="admin" ${u.role==='admin'?'selected':''}>👑 Admin</option>
+            <option value="medica" ${u.role==='medica'?'selected':''}>👩‍⚕️ Médica</option>
+            <option value="secretaria" ${u.role==='secretaria'?'selected':''}>💼 Secretária</option>
+          </select>`}
+      </div>`;
+    }).join('');
+  }catch(e){
+    cont.innerHTML='<div style="font-size:12px;color:var(--red);padding:8px">Erro: '+e.message+'<br><span style="color:var(--muted)">Verifique se rodou o SQL da tabela user_profiles</span></div>';
+  }
+}
+
+async function alterarPerfilUsuario(userId,novoRole){
+  if(!confirm('Alterar perfil deste usuário para '+(ROLE_LABELS[novoRole]||novoRole)+'?'))return;
+  try{
+    const sb=getSB();
+    const{error}=await sb.from('user_profiles').update({role:novoRole}).eq('id',userId);
+    if(error)throw error;
+    carregarListaAdmins();
+  }catch(e){alert('Erro: '+e.message);}
+}
+
 async function criarNovoAdmin(){
   const nome=document.getElementById('new-admin-nome').value.trim();
   const email=document.getElementById('new-admin-email').value.trim();
   const senha=document.getElementById('new-admin-senha').value;
+  const role=document.getElementById('new-admin-role').value||'secretaria';
   const msg=document.getElementById('new-admin-msg');
   const btn=document.getElementById('btn-create-admin');
   if(!nome){msg.style.color='var(--red)';msg.textContent='Informe o nome';return;}
@@ -4607,19 +4771,26 @@ async function criarNovoAdmin(){
     const sb=getSB();
     const{data,error}=await sb.auth.signUp({
       email,password:senha,
-      options:{data:{nome,criado_por:_currentUser?.email||'sistema'}}
+      options:{data:{nome,role,criado_por:_currentUser?.email||'sistema'}}
     });
     if(error)throw error;
+    // Cria/atualiza perfil na tabela user_profiles
+    if(data.user?.id){
+      await sb.from('user_profiles').upsert({
+        id:data.user.id,email,nome,role
+      });
+    }
     msg.style.color='var(--green)';
-    msg.innerHTML=`✅ <strong>${nome}</strong> cadastrado com sucesso!<br><span style="color:var(--muted);font-size:11px">Pode fazer login com <strong>${email}</strong></span>`;
+    msg.innerHTML=`✅ <strong>${nome}</strong> cadastrado como <strong>${ROLE_LABELS[role]}</strong>!<br><span style="color:var(--muted);font-size:11px">Pode fazer login com <strong>${email}</strong></span>`;
     document.getElementById('new-admin-nome').value='';
     document.getElementById('new-admin-email').value='';
     document.getElementById('new-admin-senha').value='';
+    carregarListaAdmins();
   }catch(e){
     msg.style.color='var(--red)';
     msg.textContent=e.message.includes('already')?'Este e-mail já tem conta':e.message;
   }finally{
-    btn.disabled=false;btn.textContent='+ Criar novo administrador';
+    btn.disabled=false;btn.textContent='+ Criar novo usuário';
   }
 }
 
@@ -4769,7 +4940,7 @@ function desmarcarPacFin(){
   document.getElementById('nfin-pac-selected').style.display='none';
   document.getElementById('nfin-pac-busca').focus();
 }
-function togglePgto(){
+function toggleParcelasBox(){
   const pgto=document.getElementById('nfin-pgto').value;
   const box=document.getElementById('nfin-parcelas-box');
   if(pgto==='credito'){box.style.display='block';atualizarValorParcela();}
@@ -5230,34 +5401,25 @@ async function fazerBackup(){
     a.href=url;a.download=`backup-clinica-yasmim-${hoje}.json`;
     document.body.appendChild(a);a.click();a.remove();
     URL.revokeObjectURL(url);
-    // Conta totais
     const totais=Object.keys(backup).filter(k=>k!=='_meta').map(k=>`${k}: ${backup[k].length}`).join('\n');
     alert(`✅ Backup gerado!\n\nArquivo: backup-clinica-yasmim-${hoje}.json\n\nConteúdo:\n${totais}\n\n💡 Recomendo fazer backup semanal e guardar em local seguro.`);
-    logAudit('create','audit_log','backup',{tabelas:Object.keys(backup).length-1});
+    if(typeof logAudit==='function')logAudit('create','audit_log','backup',{tabelas:Object.keys(backup).length-1});
   }catch(e){alert('Erro ao gerar backup: '+e.message);}
 }
 
 // ════════════════════════════════════════════
-//  ITEM 5: LEMBRETES DE CONSULTA (envio manual via WhatsApp)
+//  ITEM 5: LEMBRETES DE CONSULTA
 // ════════════════════════════════════════════
-function abrirLembretes(){
-  const ov=document.getElementById('lembretes-overlay');
-  ov.style.display='flex';
-  renderLembretes();
-}
-function fecharLembretes(){document.getElementById('lembretes-overlay').style.display='none';}
-
+function abrirLembretes(){const ov=document.getElementById('lembretes-overlay');if(!ov){alert('Modal de lembretes não encontrado');return;}ov.style.display='flex';renderLembretes();}
+function fecharLembretes(){const ov=document.getElementById('lembretes-overlay');if(ov)ov.style.display='none';}
 function renderLembretes(){
   const amanha=addDays(todayISO(),1);
   const ags=LS.get('ags').filter(a=>a.data===amanha&&a.status!=='cancelado').sort((a,b)=>a.hora>b.hora?1:-1);
   const pacs=LS.get('pacs');
   const cont=document.getElementById('lembretes-list');
   const dtLabel=new Date(amanha+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
-  document.getElementById('lembretes-data').textContent=dtLabel;
-  if(!ags.length){
-    cont.innerHTML='<div class="empty" style="padding:30px 18px"><div style="font-size:40px;margin-bottom:10px">📭</div><div style="font-size:14px;font-weight:600;color:var(--text)">Nenhuma consulta para amanhã</div><div style="font-size:12px;color:var(--muted);margin-top:5px">'+dtLabel+'</div></div>';
-    return;
-  }
+  const dtEl=document.getElementById('lembretes-data');if(dtEl)dtEl.textContent=dtLabel;
+  if(!ags.length){cont.innerHTML='<div class="empty" style="padding:30px 18px"><div style="font-size:40px;margin-bottom:10px">📭</div><div style="font-size:14px;font-weight:600;color:var(--text)">Nenhuma consulta para amanhã</div><div style="font-size:12px;color:var(--muted);margin-top:5px">'+dtLabel+'</div></div>';return;}
   cont.innerHTML=ags.map(a=>{
     const pac=pacs.find(p=>p.id===a.pac_id);
     const nome=pac?pac.nome:a.nome||'?';
@@ -5268,22 +5430,7 @@ function renderLembretes(){
     const msg=`Olá, ${primeiroNome}! 💜\n\nPassando aqui só para lembrar da sua consulta com a Dra. Yasmim Aires amanhã, ${dtLabel}, às ${a.hora}.\n\n📍 Unidade ${local}\n${enderecoMap[local]}\n\nPode confirmar sua presença? 😊\n\nAté breve!\nIsa - Secretária Dra. Yasmim`;
     const waLink=tel?`https://wa.me/55${tel.replace(/^55/,'')}?text=${encodeURIComponent(msg)}`:'';
     const semTel=!tel;
-    return `<div style="background:var(--card);border:1px solid var(--bdr);border-radius:11px;padding:12px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div style="width:38px;height:38px;border-radius:50%;background:var(--tl4);color:var(--tl2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${initials(nome)}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${nome}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:1px">${a.hora} · 🏥 ${local}${tel?' · 📞 '+tel:''}</div>
-        </div>
-      </div>
-      <div style="background:var(--bg);border-radius:8px;padding:9px 11px;font-size:11.5px;color:var(--text);line-height:1.55;white-space:pre-wrap;max-height:100px;overflow-y:auto">${msg}</div>
-      <div style="display:flex;gap:6px;margin-top:8px">
-        ${semTel
-          ?'<div style="flex:1;padding:9px;background:#fee2e2;color:#991b1b;border-radius:8px;font-size:11.5px;font-weight:600;text-align:center">⚠️ Sem telefone cadastrado</div>'
-          :`<a href="${waLink}" target="_blank" rel="noopener" style="flex:1;padding:9px;background:#25d366;color:#fff;border-radius:8px;font-size:11.5px;font-weight:700;text-align:center;text-decoration:none;font-family:inherit">📱 Enviar WhatsApp</a>`}
-        <button onclick="copiarLembrete(this,'${a.id}')" style="padding:9px 14px;background:var(--tl4);color:var(--tl2);border:none;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">📋 Copiar</button>
-      </div>
-    </div>`;
+    return `<div style="background:var(--card);border:1px solid var(--bdr);border-radius:11px;padding:12px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="width:38px;height:38px;border-radius:50%;background:var(--tl4);color:var(--tl2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">${initials(nome)}</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--text)">${nome}</div><div style="font-size:11px;color:var(--muted);margin-top:1px">${a.hora} · 🏥 ${local}${tel?' · 📞 '+tel:''}</div></div></div><div style="background:var(--bg);border-radius:8px;padding:9px 11px;font-size:11.5px;color:var(--text);line-height:1.55;white-space:pre-wrap;max-height:100px;overflow-y:auto">${msg}</div><div style="display:flex;gap:6px;margin-top:8px">${semTel?'<div style="flex:1;padding:9px;background:#fee2e2;color:#991b1b;border-radius:8px;font-size:11.5px;font-weight:600;text-align:center">⚠️ Sem telefone cadastrado</div>':`<a href="${waLink}" target="_blank" rel="noopener" style="flex:1;padding:9px;background:#25d366;color:#fff;border-radius:8px;font-size:11.5px;font-weight:700;text-align:center;text-decoration:none;font-family:inherit">📱 Enviar WhatsApp</a>`}<button onclick="copiarLembrete(this,'${a.id}')" style="padding:9px 14px;background:var(--tl4);color:var(--tl2);border:none;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">📋 Copiar</button></div></div>`;
   }).join('');
 }
 function copiarLembrete(btn,agId){
@@ -5310,48 +5457,50 @@ async function installPWA(){if(!_pwaPrompt)return;_pwaPrompt.prompt();const{outc
 //  INIT
 // ════════════════════════════════════════════
 seedIfEmpty();
-// Check Supabase connection AND auth status
 (async()=>{
   if(USE_SB){
-    document.getElementById('sb-indicator').style.color='#fbbf24';
-    document.getElementById('sb-txt').textContent='Conectando ao Supabase...';
+    const sbInd=document.getElementById('sb-indicator');
+    const sbTxt=document.getElementById('sb-txt');
+    if(sbInd)sbInd.style.color='#fbbf24';
+    if(sbTxt)sbTxt.textContent='Conectando ao Supabase...';
     try{
-      // Just check connection (use auth endpoint which doesn't require RLS)
       const sb=getSB();
       const{data:{session}}=await sb.auth.getSession();
-      document.getElementById('sb-indicator').style.color='#34d399';
+      if(sbInd)sbInd.style.color='#34d399';
       if(session){
+        _currentUser=session.user;
         const nome=session.user?.user_metadata?.nome||session.user?.email?.split('@')[0]||'Usuário';
-        document.getElementById('sb-txt').innerHTML=`✅ Conectado como <strong>${nome}</strong>`;
+        if(sbTxt)sbTxt.innerHTML=`✅ Conectado como <strong>${nome}</strong>`;
       } else {
-        document.getElementById('sb-txt').textContent='✅ Supabase pronto — faça login para acessar';
+        if(sbTxt)sbTxt.textContent='✅ Supabase pronto — faça login para acessar';
       }
     }catch(e){
-      document.getElementById('sb-indicator').style.color='#f87171';
-      document.getElementById('sb-txt').textContent='❌ Erro ao conectar: verifique URL e Key';
+      const sbInd=document.getElementById('sb-indicator');
+      const sbTxt=document.getElementById('sb-txt');
+      if(sbInd)sbInd.style.color='#f87171';
+      if(sbTxt)sbTxt.textContent='❌ Erro ao conectar: verifique URL e Key';
     }
   } else {
-    document.getElementById('sb-indicator').style.color='#94a3b8';
-    document.getElementById('sb-txt').textContent='Modo local · Configure o Supabase para sincronizar';
+    const sbInd=document.getElementById('sb-indicator');
+    const sbTxt=document.getElementById('sb-txt');
+    if(sbInd)sbInd.style.color='#94a3b8';
+    if(sbTxt)sbTxt.textContent='Modo local · Configure o Supabase para sincronizar';
   }
 })();
-// ── ITEM 4: Detecta retorno do link de recuperação de senha ──
 (function(){
   if(!USE_SB||!window.supabase)return;
   try{
     const sb=getSB();if(!sb)return;
     sb.auth.onAuthStateChange((event,session)=>{
       if(event==='PASSWORD_RECOVERY'){
-        // Usuário clicou no link do e-mail — mostra tela de nova senha
         document.getElementById('landing').style.display='none';
         document.getElementById('auth-screen').style.display='flex';
-        trocarAuthMode('reset');
-        setTimeout(()=>document.getElementById('reset-senha').focus(),200);
+        if(typeof trocarAuthMode==='function')trocarAuthMode('reset');
+        setTimeout(()=>{const el=document.getElementById('reset-senha');if(el)el.focus();},200);
       }
     });
   }catch(e){console.warn('auth listener skipped:',e?.message);}
 })();
-// ── Carrega chave API compartilhada do Supabase (config table) ──
 (async()=>{
   if(USE_SB){
     try{
@@ -5368,7 +5517,7 @@ seedIfEmpty();
   }
   if(apiKey){const inp=document.getElementById('api-inp');if(inp)inp.value='(salvo localmente)';}
 })();
-setInterval(()=>{if(document.getElementById('admin-app').classList.contains('active')){if(curPage==='pg-home')renderHome();else atualizarBadgeNotif();}},30000);
+setInterval(()=>{if(document.getElementById('admin-app').classList.contains('active')){if(curPage==='pg-home')renderHome();else if(typeof atualizarBadgeNotif==='function')atualizarBadgeNotif();}},30000);
 </script>
 
 <!-- TIMER OVERLAY -->
@@ -5390,9 +5539,9 @@ setInterval(()=>{if(document.getElementById('admin-app').classList.contains('act
       <button class="timer-btn pause" id="tmr-pause-btn" onclick="timerToggle()">⏸ Pausar</button>
       <button class="timer-btn stop" onclick="timerStop()">✕ Cancelar</button>
     </div>
-    <button class="timer-btn done-btn" id="tmr-done-btn" style="display:none" onclick="timerComplete()">✅ Concluir e registrar aplicação</button>
   </div>
 </div>
 
+</div>
 </body>
 </html>
