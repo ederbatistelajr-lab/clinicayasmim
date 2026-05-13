@@ -874,6 +874,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
         <div class="chart-card" style="margin:0"><div class="chart-title" style="font-size:12px">Status protocolos</div><div style="position:relative;height:140px"><canvas id="chart-proto" class="chart-canvas"></canvas></div></div>
         <div class="chart-card" style="margin:0"><div class="chart-title" style="font-size:12px">Modalidade</div><div style="position:relative;height:140px"><canvas id="chart-modal" class="chart-canvas"></canvas></div></div>
       </div>
+      <div class="chart-card"><div class="chart-title">🏆 Top indicações (ranking)</div><div id="rank-indicacoes" style="padding:6px 4px"></div></div>
     </div>
 
 
@@ -1321,6 +1322,10 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
           <button type="button" data-ori="Facebook" onclick="npToggleOri(this)" style="background:#dbeafe;color:#1d4ed8;border:1.5px solid transparent;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">Facebook</button>
           <button type="button" data-ori="TikTok" onclick="npToggleOri(this)" style="background:#fee2e2;color:#991b1b;border:1.5px solid transparent;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">TikTok</button>
         </div>
+      </div>
+      <div class="fg" id="np-indicado-por-box" style="display:none">
+        <label>Quem indicou? *</label>
+        <input class="fi" id="np-indicado-por" placeholder="Nome da pessoa que indicou" autocomplete="off"/>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:16px">
@@ -2050,8 +2055,24 @@ function renderDet(){
   document.getElementById('det-hdr').innerHTML=`<button class="det-back" onclick="goPage('${prevPage}')">←</button>${fotoPerfil}<div class="det-nm">${p.nome}</div><div class="det-sub">${p.queixa||'Paciente da clínica'}</div>`;
   const fotos=LS.where('fotos','pac_id',detPacId);
   document.getElementById('det-stats').innerHTML=`<div class="ds"><div class="ds-n">${ags.filter(a=>a.status!=='cancelado').length}</div><div class="ds-l">Consultas</div></div><div class="ds"><div class="ds-n">${pts.length}</div><div class="ds-l">Prontuários</div></div><div class="ds"><div class="ds-n">${rcs.length}</div><div class="ds-l">Receitas</div></div><div class="ds"><div class="ds-n">${fotos.length}</div><div class="ds-l">Fotos</div></div><div class="ds"><div class="ds-n">${prs.length}</div><div class="ds-l">Protocolos</div></div>`;
-  const tabs=['📋 Prontuário','🏥 Consultas','📝 Anamnese','💊 Receitas','🧪 Exames','💊 Protocolos','📓 Notas','📸 Fotos','🏷️ Tags','📩 Follow-up'];
-  document.getElementById('det-tabs').innerHTML=tabs.map((t,i)=>`<button class="mti ${i===detTab?'active':''}" onclick="detTab=${i};renderDetContent()">${t}</button>`).join('');
+  // Abas com filtro por perfil — admin/médica veem tudo, secretária só bioimpedância e itens permitidos
+  const TABS_ALL=[
+    {i:0,nome:'📋 Prontuário',perm:'prontuarios'},
+    {i:1,nome:'🏥 Consultas',perm:null},
+    {i:2,nome:'📝 Anamnese',perm:'anamnese'},
+    {i:3,nome:'💊 Receitas',perm:'receitas'},
+    {i:4,nome:'🧪 Exames',perm:null},
+    {i:5,nome:'💊 Protocolos',perm:'protocolos'},
+    {i:6,nome:'📓 Notas',perm:'notas'},
+    {i:7,nome:'📸 Fotos',perm:'fotos'},
+    {i:8,nome:'🏷️ Tags',perm:'tags'},
+    {i:9,nome:'📩 Follow-up',perm:'followup'},
+    {i:10,nome:'⚖️ Bioimpedância',perm:'bioimpedancia'}
+  ];
+  const tabsVis=TABS_ALL.filter(t=>!t.perm||can(t.perm));
+  // Se a aba atual não está visível, vai pra primeira disponível
+  if(!tabsVis.find(t=>t.i===detTab)) detTab=tabsVis[0]?.i||1;
+  document.getElementById('det-tabs').innerHTML=tabsVis.map(t=>`<button class="mti ${t.i===detTab?'active':''}" onclick="detTab=${t.i};renderDetContent()">${t.nome}</button>`).join('');
   renderDetContent();
 }
 
@@ -2298,7 +2319,75 @@ function renderDetContent(){
   else if(detTab===9){
     html=renderFollowupTab();
   }
+  else if(detTab===10){
+    // BIOIMPEDÂNCIA — Secretária pode anexar PDF; todos podem visualizar
+    const bios=LS.where('exs','pac_id',detPacId).filter(e=>(e.tipo==='bioimpedancia')||(e.nome||'').toLowerCase().includes('bioimped'));
+    const sortedBios=bios.sort((a,b)=>b.data>a.data?1:-1);
+    html=`<div style="padding:0 14px 16px">
+      <div style="background:var(--tl4);border-radius:11px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--tl2);line-height:1.6">
+        ⚖️ <strong>Bioimpedância:</strong> anexe aqui o PDF do exame que a secretária realiza. A Dra. e os admins conseguem abrir o arquivo para análise.
+      </div>
+      <input type="file" id="bio-upload-input" accept=".pdf,application/pdf" style="display:none" onchange="uploadBioimpedancia(this)"/>
+      <button onclick="document.getElementById('bio-upload-input').click()" style="width:100%;padding:14px;background:var(--tl2);color:#fff;border:none;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">📎 Anexar nova bioimpedância (PDF)</button>
+      <div style="margin-top:16px">
+        ${sortedBios.length?'':'<div class="empty" style="padding:24px 16px"><div style="font-size:36px;margin-bottom:8px">⚖️</div><div style="font-size:13px;font-weight:600;color:var(--text)">Nenhuma bioimpedância anexada ainda</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">Use o botão acima para anexar o primeiro PDF.</div></div>'}
+        ${sortedBios.map(e=>`
+          <div style="background:var(--card);border:1px solid var(--bdr);border-radius:11px;padding:12px 13px;margin-bottom:8px;display:flex;align-items:center;gap:11px">
+            <div style="width:42px;height:42px;border-radius:11px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📄</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.nome}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">📅 ${fmtD(e.data)} ${e.upload_por?'· por '+e.upload_por:''}</div>
+              ${e.nota?`<div style="font-size:11px;color:var(--tl2);margin-top:3px;font-style:italic">📝 ${e.nota}</div>`:''}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <button onclick="abrirBioimpedancia('${e.id}')" style="background:var(--tl2);color:#fff;border:none;border-radius:7px;padding:6px 11px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">👁️ Abrir</button>
+              <button onclick="if(confirm('Excluir esta bioimpedância?')){LS.del('exs','${e.id}');renderDetContent();}" style="background:#fee2e2;color:#991b1b;border:none;border-radius:7px;padding:6px 11px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">🗑 Excluir</button>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
   document.getElementById('det-content').innerHTML=html;
+}
+
+// ── Bioimpedância: upload e abertura do PDF ──
+function uploadBioimpedancia(input){
+  const file=input.files[0];if(!file)return;input.value='';
+  if(file.type&&file.type!=='application/pdf'&&!file.name.toLowerCase().endsWith('.pdf')){alert('Por favor anexe um arquivo PDF');return;}
+  if(file.size>10*1024*1024){if(!confirm('Arquivo grande ('+(file.size/1024/1024).toFixed(1)+' MB). Continuar?'))return;}
+  const nota=prompt('Observação sobre esta bioimpedância (opcional):','')||'';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const base64=e.target.result;
+    LS.upsert('exs',{
+      id:uid(),pac_id:detPacId,
+      nome:file.name,base64,
+      tipo:'bioimpedancia',
+      data:todayISO(),
+      nota,
+      upload_por:_currentUser?.email||'',
+      novo:false
+    });
+    alert('✅ Bioimpedância anexada!');
+    renderDetContent();
+  };
+  reader.readAsDataURL(file);
+}
+function abrirBioimpedancia(id){
+  const e=LS.get('exs').find(x=>x.id===id);if(!e)return;
+  if(!e.base64){alert('Arquivo indisponível');return;}
+  // Abre em nova aba — o navegador renderiza o PDF
+  const w=window.open();
+  if(!w){alert('Permita pop-ups para abrir o PDF.');return;}
+  w.document.title=e.nome;
+  w.document.body.style.margin='0';
+  const isPdfData=e.base64.startsWith('data:application/pdf');
+  if(isPdfData){
+    w.location.href=e.base64;
+  } else {
+    // Caso não seja PDF embed, faz download
+    const a=document.createElement('a');a.href=e.base64;a.download=e.nome;a.click();w.close();
+  }
 }
 let _selTagCor='#dc2626';
 function selectTagCor(el){document.querySelectorAll('.tc').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');_selTagCor=el.dataset.cor;}
@@ -2989,7 +3078,7 @@ Limeira: R. João Kuhl Filho, 101 - Vila São João
 Atende: Quarta e Quinta das 8h às 18h, Sábado das 8h às 12h
 
 Araraquara: Rua Roland Lupo, 231 - Vila Xavier
-Atende: Segunda das 12h às 18h
+Atende: Segunda e Terça das 12h às 18h
 
 Pagamento: particular (cartão até 3x, PIX, transferência)
 Procedimentos: Emagrecimento, Reposição Hormonal, Performance, Nutrologia Esportiva, Medicina do Sono, Composição Corporal, Suplementação, Longevidade`;
@@ -3074,13 +3163,13 @@ const CHAT_SYS=''; // substituído por getChatSys() dinâmico
 
 const DEMO_RESP=[
   {k:['olá','oi','bom dia','boa tarde','boa noite','hello'],r:'Seja bem-vindo(a) ao consultório da Dra. Yasmim Aires Especialista em Emagrecimento, Performance e Reposição Hormonal. 💜\n\nQual o seu nome, por gentileza?'},
-  {k:['agendar','marcar','consulta','quero marcar','preciso marcar'],r:'Ótimo! Vou te ajudar a agendar. 📅\n\nPoderiam me informar:\n• Sua preferência de data e período (manhã ou tarde)?\n• Em qual cidade: Limeira ou Araraquara?\n\nEm Limeira atendemos Qua e Qui das 8h às 18h e Sáb das 8h às 12h. Em Araraquara atendemos Seg das 12h às 18h e Ter das 8h às 13h.'},
+  {k:['agendar','marcar','consulta','quero marcar','preciso marcar'],r:'Ótimo! Vou te ajudar a agendar. 📅\n\nPoderiam me informar:\n• Sua preferência de data e período (manhã ou tarde)?\n• Em qual cidade: Limeira ou Araraquara?\n\nEm Limeira atendemos Qua e Qui das 8h às 18h e Sáb das 8h às 12h. Em Araraquara atendemos Seg e Ter das 12h às 18h.'},
   {k:['procedimento','serviço','tratamento','oferecem','têm'],r:'A Clínica da Dra. Yasmim oferece:\n\n🩺 Consulta de Nutrologia (1ª vez e retorno)\n📊 Análise de Composição Corporal\n🧪 Avaliação de Exames Laboratoriais\n💊 Suplementação Personalizada\n🥗 Plano Alimentar Integrado\n⚡ Programa de Emagrecimento\n💪 Nutrologia Esportiva\n🌙 Medicina do Sono e Saúde Metabólica\n\nGostaria de saber mais sobre algum desses?'},
   {k:['valor','preço','quanto','custa','custo','convênio'],r:'Atendemos apenas particular. Os valores variam conforme o tipo de consulta:\n\n💳 Consulta inicial: a partir de R$ 350\n💳 Retorno: a partir de R$ 300\n\nAceitamos pagamento em até 3x no cartão, PIX e transferência.\n\nPosso te agendar uma consulta?'},
   {k:['exame','resultado','enviar exame','mandar exame'],r:'Para enviar seus exames, clique no 📎 aqui no chat e selecione o arquivo (PDF ou imagem).\n\nSeus exames vão direto para a Dra. Yasmim analisar antes da consulta. 🧪\n\nJá tem consulta agendada ou deseja marcar uma?'},
   {k:['cancelar','desmarcar','cancelamento'],r:'Sem problemas! Para cancelar, preciso do seu nome e data da consulta.\n\nLembramos que cancelamentos com menos de 24h de antecedência podem ter uma taxa. 😊'},
-  {k:['endereço','onde fica','localização','como chegar','limeira','araraquara'],r:'A Dra. Yasmim atende em duas unidades 📍\n\n🏥 *Limeira* — R. João Kuhl Filho, 101 - Vila São João\nQuarta e Quinta 08h–18h | Sábado 08h–12h\n\n🏥 *Araraquara* — Rua Roland Lupo, 231 - Vila Xavier\nSegunda 12h–18h e Terça 08h–13h e Terça 08h–13h\n\nEm qual cidade prefere ser atendido(a): Limeira ou Araraquara?'},
-  {k:['horário','funciona','atendimento','dias'],r:'Nossos horários de atendimento são:\n\n📍 *Limeira*\n📅 Quarta e Quinta: 8h às 18h\n📅 Sábado: 8h às 12h\n\n📍 *Araraquara*\n📅 Segunda: 12h às 18h e Terça: 08h às 13h\n\nGostaria de agendar? Em qual cidade: Limeira ou Araraquara?'},
+  {k:['endereço','onde fica','localização','como chegar','limeira','araraquara'],r:'A Dra. Yasmim atende em duas unidades 📍\n\n🏥 *Limeira* — R. João Kuhl Filho, 101 - Vila São João\nQuarta e Quinta 08h–18h | Sábado 08h–12h\n\n🏥 *Araraquara* — Rua Roland Lupo, 231 - Vila Xavier\nSegunda e Terça 12h–18h\n\nEm qual cidade prefere ser atendido(a): Limeira ou Araraquara?'},
+  {k:['horário','funciona','atendimento','dias'],r:'Nossos horários de atendimento são:\n\n📍 *Limeira*\n📅 Quarta e Quinta: 8h às 18h\n📅 Sábado: 8h às 12h\n\n📍 *Araraquara*\n📅 Segunda e Terça: 12h às 18h\n\nGostaria de agendar? Em qual cidade: Limeira ou Araraquara?'},
 ];
 function demoResp(txt){
   const l=txt.toLowerCase();
@@ -3192,20 +3281,32 @@ async function send(){
   chatBusy=true;showTyp();
   let reply='';
   if(apiKey){
+    // Chamada com timeout para evitar travamento
+    const ctrl=new AbortController();
+    const tm=setTimeout(()=>ctrl.abort(),25000);
     try{
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,system:getChatSys(),messages:chatHist})});
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,system:getChatSys(),messages:chatHist}),
+        signal:ctrl.signal
+      });
+      clearTimeout(tm);
       const d=await res.json();
       if(d.error){
         console.error('[Anthropic API error]',d.error);
         if(d.error.type==='authentication_error')reply='⚠️ Chave API inválida. Volte à tela inicial e salve a chave novamente.';
         else if(d.error.type==='permission_error')reply='⚠️ Chave sem permissão. Verifique se a chave foi gerada corretamente em platform.claude.com';
+        else if(d.error.type==='rate_limit_error')reply='⚠️ Muitas requisições. Aguarde alguns segundos e tente novamente.';
         else reply='⚠️ Erro da API: '+d.error.message;
       } else {
         reply=d.content[0].text;
       }
     }catch(e){
+      clearTimeout(tm);
       console.error('[fetch error]',e);
-      reply='⚠️ Erro de conexão: '+e.message;
+      if(e.name==='AbortError')reply='⚠️ A conexão demorou demais. Tente novamente ou clique em "👤 Atendente" para falar com a Isa humana.';
+      else reply='⚠️ Erro de conexão: '+e.message+'. Tente novamente.';
     }
   } else {
     await new Promise(r=>setTimeout(r,800+Math.random()*600));reply=demoResp(txt);
@@ -3216,6 +3317,8 @@ async function send(){
   const ctx=(reply+txt).toLowerCase();
   if(ctx.includes('agendar')||ctx.includes('data')||ctx.includes('horário'))setQR('agendar');else setQR('geral');
   chatBusy=false;
+  // Persiste histórico no localStorage para sobreviver a refresh ou troca de aba
+  try{localStorage.setItem('_yd_chat_hist',JSON.stringify({hist:chatHist,mode:chatMode,pacId:chatPacId,ts:Date.now()}));}catch(e){}
 }
 
 function uploadExam(input){
@@ -3237,19 +3340,50 @@ function uploadExam(input){
 async function initChat(){
   chatBusy=true;showTyp();
   chatHist=[{role:'user',content:'Olá!'}];
+  // Faz a chamada com timeout pra não ficar pendurada
+  async function chamarAnthropic(){
+    const ctrl=new AbortController();
+    const tm=setTimeout(()=>ctrl.abort(),20000); // 20s timeout
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:400,system:getChatSys(),messages:chatHist}),
+        signal:ctrl.signal
+      });
+      clearTimeout(tm);
+      return await res.json();
+    }catch(e){clearTimeout(tm);throw e;}
+  }
   if(apiKey){
     try{
-      const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:400,system:getChatSys(),messages:chatHist})});
-      const d=await res.json();
-      if(d.error){console.error('[Anthropic init error]',d.error);const hh=new Date().getHours();const sf=hh<12?'Bom dia':'Boa tarde';addMsg(sf+'! Sou a Isa, secretária da Dra. Yasmim 💜 Qual é o seu nome?','bot');}
+      const d=await chamarAnthropic();
+      if(d.error){
+        console.error('[Anthropic init error]',d.error);
+        const hh=new Date().getHours();const sf=hh<12?'Bom dia':'Boa tarde';
+        const r=sf+'! Sou a Isa, secretária da Dra. Yasmim 💜 Qual é o seu nome?';
+        chatHist.push({role:'assistant',content:r});
+        addMsg(r,'bot');
+      }
       else{const reply=d.content[0].text;chatHist.push({role:'assistant',content:reply});addMsg(cleanTxt(reply),'bot');}
-    }catch(e){console.error('[fetch init error]',e);const hh=new Date().getHours();const sf=hh<12?'Bom dia':'Boa tarde';addMsg(sf+'! Sou a Isa, secretária da Dra. Yasmim 💜 Qual é o seu nome?','bot');}
+    }catch(e){
+      console.error('[fetch init error]',e);
+      const hh=new Date().getHours();const sf=hh<12?'Bom dia':'Boa tarde';
+      const eraTimeout=e.name==='AbortError';
+      const r=eraTimeout
+        ? sf+'! Sou a Isa 💜 A conexão está um pouco lenta — me conta seu nome e como posso te ajudar?'
+        : sf+'! Sou a Isa, secretária da Dra. Yasmim 💜 Qual é o seu nome?';
+      chatHist.push({role:'assistant',content:r});
+      addMsg(r,'bot');
+    }
   } else {
     await new Promise(r=>setTimeout(r,800));
     const r='Olá! Boa escolha em cuidar da sua saúde! 💜\n\nSou a Isa, secretária da Dra. Yasmim Aires.\n\nQual o seu nome, por gentileza?';
     chatHist.push({role:'assistant',content:r});addMsg(r,'bot');
   }
   setQR('inicio');chatBusy=false;
+  // Persiste histórico no localStorage para sobreviver a refresh
+  try{localStorage.setItem('_yd_chat_hist',JSON.stringify({hist:chatHist,mode:chatMode,pacId:chatPacId,ts:Date.now()}));}catch(e){}
 }
 
 
@@ -4656,9 +4790,9 @@ function marcarTodasLidas(){
 let _userRole='admin';
 const ROLE_LABELS={admin:'👑 Admin',medica:'👩‍⚕️ Médica',secretaria:'💼 Secretária'};
 const ROLE_PERMS={
-  admin:{financeiro:true,prontuarios:true,gerenciar_admins:true,estoque:true,relatorios:true},
-  medica:{financeiro:false,prontuarios:true,gerenciar_admins:false,estoque:true,relatorios:true},
-  secretaria:{financeiro:false,prontuarios:false,gerenciar_admins:false,estoque:true,relatorios:false},
+  admin:    {financeiro:true, prontuarios:true, gerenciar_admins:true,  estoque:true, relatorios:true,  bioimpedancia:true, anamnese:true, receitas:true, protocolos:true, notas:true, fotos:true, tags:true, followup:true},
+  medica:   {financeiro:false,prontuarios:true, gerenciar_admins:false, estoque:true, relatorios:true,  bioimpedancia:true, anamnese:true, receitas:true, protocolos:true, notas:true, fotos:true, tags:true, followup:true},
+  secretaria:{financeiro:false,prontuarios:false,gerenciar_admins:false, estoque:true, relatorios:false, bioimpedancia:true, anamnese:false,receitas:false,protocolos:false,notas:true, fotos:false,tags:true, followup:true},
 };
 function can(perm){return !!(ROLE_PERMS[_userRole||'admin']?.[perm]);}
 
@@ -4998,13 +5132,14 @@ function openNovoPacForm(){
   _npFoto=null;
   _npOrigens=[];
   // Reset form
-  ['np-nome','np-tel','np-email','np-cpf','np-nasc','np-queixa'].forEach(id=>{
+  ['np-nome','np-tel','np-email','np-cpf','np-nasc','np-queixa','np-indicado-por'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   document.getElementById('np-stage').value='novo_lead';
   document.getElementById('np-foto-preview').innerHTML='📷';
   document.getElementById('np-foto-preview').style.background='var(--tl4)';
   document.querySelectorAll('#np-origem button').forEach(b=>b.style.border='1.5px solid transparent');
+  const indBox=document.getElementById('np-indicado-por-box');if(indBox)indBox.style.display='none';
   document.getElementById('novo-pac-overlay').style.display='flex';
 }
 
@@ -5022,6 +5157,16 @@ function npToggleOri(btn){
     _npOrigens=[ori];
     document.querySelectorAll('#np-origem button').forEach(b=>b.style.border='1.5px solid transparent');
     btn.style.border='1.5px solid currentColor';
+  }
+  // Mostra/esconde campo "Quem indicou?" só quando a origem é Indicação
+  const box=document.getElementById('np-indicado-por-box');
+  if(box){
+    if(_npOrigens.includes('Indicação')){
+      box.style.display='block';
+      setTimeout(()=>{const inp=document.getElementById('np-indicado-por');if(inp)inp.focus();},100);
+    } else {
+      box.style.display='none';
+    }
   }
 }
 
@@ -5055,6 +5200,11 @@ function salvarNovoPac(){
     const colorMap={Instagram:'#7c3aed',Indicação:'#166534',Google:'#1d4ed8',WhatsApp:'#15803d',Facebook:'#1d4ed8',TikTok:'#991b1b'};
     return{label:o,cor:colorMap[o]||'#475569',cat:'origem'};
   });
+  // Se origem = Indicação, adiciona tag com nome de quem indicou
+  const indicadoPor=document.getElementById('np-indicado-por')?.value?.trim()||'';
+  if(_npOrigens.includes('Indicação')&&indicadoPor){
+    tagsOrigem.push({label:'Indicado por: '+indicadoPor,cor:'#0369a1',cat:'indicacao'});
+  }
   const pac={
     id:uid(),
     nome,
@@ -5066,6 +5216,7 @@ function salvarNovoPac(){
     pipe_stage:document.getElementById('np-stage').value,
     foto:_npFoto||'',
     tags:tagsOrigem,
+    indicado_por:indicadoPor,
     criado:hhmm(),
     exames:0,
     fu_status:{},
@@ -5317,6 +5468,44 @@ function renderAnalytics(){
     _charts['chart-proto']=new Chart(document.getElementById('chart-proto'),{type:'doughnut',data:{labels:['Em dia','Urgentes'],datasets:[{data:[Math.max(okN,1),Math.max(urgN,0)],backgroundColor:['rgba(34,197,94,.7)','rgba(239,68,68,.7)'],borderWidth:0}]},options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}}});
     _charts['chart-modal']=new Chart(document.getElementById('chart-modal'),{type:'doughnut',data:{labels:['Limeira','Araraquara'],datasets:[{data:[Math.max(presN,1),Math.max(onlN,0)],backgroundColor:['rgba(15,118,110,.7)','rgba(59,130,246,.7)'],borderWidth:0}]},options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}}});
   });
+  // Ranking de indicações
+  renderRankingIndicacoes();
+}
+
+function renderRankingIndicacoes(){
+  const cont=document.getElementById('rank-indicacoes');
+  if(!cont)return;
+  const pacs=LS.get('pacs');
+  const counter={};
+  pacs.forEach(p=>{
+    let quem=p.indicado_por||'';
+    if(!quem && p.tags){
+      const tagInd=p.tags.find(t=>t.cat==='indicacao'||(t.label||'').startsWith('Indicado por:'));
+      if(tagInd)quem=(tagInd.label||'').replace(/^Indicado por:\s*/i,'').trim();
+    }
+    if(!quem)return;
+    const k=quem.trim();
+    counter[k]=(counter[k]||0)+1;
+  });
+  const lista=Object.entries(counter).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(!lista.length){
+    cont.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:24px 12px"><div style="font-size:32px;margin-bottom:6px">🤝</div>Nenhum paciente cadastrado com origem "Indicação" ainda.<br>Quando cadastrar pacientes indicados, eles vão aparecer aqui em ranking.</div>';
+    return;
+  }
+  const maxV=lista[0][1];
+  const medalhas=['🥇','🥈','🥉'];
+  cont.innerHTML=lista.map(([nome,n],i)=>{
+    const pct=Math.round(n/maxV*100);
+    const medal=medalhas[i]||`${i+1}º`;
+    return `<div style="margin-bottom:9px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:14px;min-width:28px;text-align:center;font-weight:700;color:var(--tl2)">${medal}</span>
+        <span style="font-size:12.5px;font-weight:600;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nome}</span>
+        <span style="background:var(--tl4);color:var(--tl2);font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px">${n} ${n===1?'indicação':'indicações'}</span>
+      </div>
+      <div style="background:var(--bg);height:7px;border-radius:4px;overflow:hidden;margin-left:36px"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--tl2),var(--tl3));border-radius:4px"></div></div>
+    </div>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════════
