@@ -1991,7 +1991,7 @@ function renderPacs(){
     const userTags=(p.tags||[]).map(t=>`<span class="pac-tag" style="background:${t.cor}22;color:${t.cor}">${t.label}</span>`).join('');
     const avatarHtml=p.foto?`<img class="av-foto" src="${p.foto}" alt="${p.nome}"/>`:`<div class="pac-av">${initials(p.nome)}</div>`;
     const stageLabel={novo_lead:'🆕 Novo lead',contato:'📞 Em contato',agendado:'📅 Agendado',em_tratamento:'💊 Em tratamento',fidelizado:'⭐ Fidelizado'}[p.pipe_stage||''];
-    return`<div class="pac-card" onclick="openDet('${p.id}')" style="position:relative">${avatarHtml}<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px"><div class="pac-nm" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.nome}</div>${stageLabel?`<span style="font-size:9.5px;color:var(--muted);white-space:nowrap">${stageLabel}</span>`:''}</div><div class="pac-mt">${p.queixa||'Sem queixa'}</div><div class="pac-tags" style="margin-top:4px">${tags.join('')}${userTags}${!tags.length&&!userTags?'<span class="ptag" style="background:#f1f5f9;color:#94a3b8">Sem histórico</span>':''}</div></div><button onclick="event.stopPropagation();removerPaciente('${p.id}','${p.nome.replace(/'/g,"\\'")}')" style="background:none;border:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;font-size:16px;flex-shrink:0" title="Remover paciente">🗑️</button></div>`;
+    return`<div class="pac-card" onclick="openDet('${p.id}')" style="position:relative">${avatarHtml}<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px"><div class="pac-nm" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.nome}</div>${stageLabel?`<span style="font-size:9.5px;color:var(--muted);white-space:nowrap">${stageLabel}</span>`:''}</div><div class="pac-mt">${p.queixa||'Sem queixa'}</div><div class="pac-tags" style="margin-top:4px">${tags.join('')}${userTags}${!tags.length&&!userTags?'<span class="ptag" style="background:#f1f5f9;color:#94a3b8">Sem histórico</span>':''}</div></div><button onclick="event.stopPropagation();openNovoPacForm('${p.id}')" style="background:none;border:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--tl2);cursor:pointer;font-size:14px;flex-shrink:0" title="Editar paciente">✏️</button><button onclick="event.stopPropagation();removerPaciente('${p.id}','${p.nome.replace(/'/g,"\\'")}')" style="background:none;border:none;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;font-size:14px;flex-shrink:0" title="Remover paciente">🗑️</button></div>`;
   }).join(''):'<div class="empty" style="padding:40px 20px"><div style="font-size:40px;margin-bottom:10px">👥</div><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:5px">Nenhum paciente cadastrado</div><div style="font-size:12px;color:var(--muted);margin-bottom:16px">Comece cadastrando o primeiro paciente</div><button onclick="openNovoPacForm()" style="padding:10px 22px;background:var(--tl2);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">+ Cadastrar paciente</button></div>';
 }
 
@@ -2052,7 +2052,7 @@ function renderDet(){
   const prs=LS.where('prs','pac_id',detPacId);
   const nts=LS.where('nts','pac_id',detPacId);
   const fotoPerfil=p.foto?`<div class="det-foto-wrap"><img class="det-foto" src="${p.foto}" alt="${p.nome}" onclick="document.getElementById('perfil-input').click()"/><button class="det-foto-edit" onclick="document.getElementById('perfil-input').click()">📷</button></div>`:`<div class="det-foto-wrap"><div class="det-foto" onclick="document.getElementById('perfil-input').click()" style="background:rgba(255,255,255,.25);border:3px dashed rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;cursor:pointer;border-radius:50%">${initials(p.nome)}</div><button class="det-foto-edit" onclick="document.getElementById('perfil-input').click()">📷</button></div>`;
-  document.getElementById('det-hdr').innerHTML=`<button class="det-back" onclick="goPage('${prevPage}')">←</button>${fotoPerfil}<div class="det-nm">${p.nome}</div><div class="det-sub">${p.queixa||'Paciente da clínica'}</div>`;
+  document.getElementById('det-hdr').innerHTML=`<button class="det-back" onclick="goPage('${prevPage}')">←</button><button onclick="openNovoPacForm('${p.id}')" title="Editar dados do paciente" style="position:absolute;top:48px;right:14px;background:rgba(255,255,255,.2);border:none;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit">✏️ Editar</button>${fotoPerfil}<div class="det-nm">${p.nome}</div><div class="det-sub">${p.queixa||'Paciente da clínica'}</div>`;
   const fotos=LS.where('fotos','pac_id',detPacId);
   document.getElementById('det-stats').innerHTML=`<div class="ds"><div class="ds-n">${ags.filter(a=>a.status!=='cancelado').length}</div><div class="ds-l">Consultas</div></div><div class="ds"><div class="ds-n">${pts.length}</div><div class="ds-l">Prontuários</div></div><div class="ds"><div class="ds-n">${rcs.length}</div><div class="ds-l">Receitas</div></div><div class="ds"><div class="ds-n">${fotos.length}</div><div class="ds-l">Fotos</div></div><div class="ds"><div class="ds-n">${prs.length}</div><div class="ds-l">Protocolos</div></div>`;
   // Abas com filtro por perfil — admin/médica veem tudo, secretária só bioimpedância e itens permitidos
@@ -4859,8 +4859,9 @@ async function carregarListaAdmins(){
     if(!data||!data.length){cont.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px">Nenhum usuário ainda</div>';return;}
     cont.innerHTML=data.map(u=>{
       const isMe=u.id===_currentUser?.id;
-      const roleEsc=u.role.replace(/'/g,"\\'");
-      return `<div style="background:var(--bg);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:9px">
+      const emailEsc=(u.email||'').replace(/'/g,"\\'");
+      const nomeEsc=(u.nome||u.email||'').replace(/'/g,"\\'");
+      return `<div style="background:var(--bg);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:9px;flex-wrap:wrap">
         <div style="width:32px;height:32px;border-radius:50%;background:var(--tl4);color:var(--tl2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">${initials(u.nome||u.email)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:12.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px">${u.nome||'—'}${isMe?' <span style="font-size:10px;color:var(--tl2);font-weight:500">(você)</span>':''}</div>
@@ -4872,6 +4873,11 @@ async function carregarListaAdmins(){
             <option value="medica" ${u.role==='medica'?'selected':''}>👩‍⚕️ Médica</option>
             <option value="secretaria" ${u.role==='secretaria'?'selected':''}>💼 Secretária</option>
           </select>`}
+        ${!isMe?`
+        <div style="flex-basis:100%;display:flex;gap:6px;margin-top:7px;padding-top:7px;border-top:1px dashed var(--bdr)">
+          <button onclick="reenviarSenhaAdmin('${emailEsc}','${nomeEsc}')" style="flex:1;padding:6px 10px;background:var(--tl4);color:var(--tl2);border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">📧 Reenviar senha</button>
+          <button onclick="removerAdmin('${u.id}','${nomeEsc}','${emailEsc}')" style="flex:1;padding:6px 10px;background:#fee2e2;color:#991b1b;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">🗑️ Remover acesso</button>
+        </div>`:''}
       </div>`;
     }).join('');
   }catch(e){
@@ -4885,6 +4891,32 @@ async function alterarPerfilUsuario(userId,novoRole){
     const sb=getSB();
     const{error}=await sb.from('user_profiles').update({role:novoRole}).eq('id',userId);
     if(error)throw error;
+    carregarListaAdmins();
+  }catch(e){alert('Erro: '+e.message);}
+}
+
+// Reenviar e-mail de recuperação de senha para um usuário
+async function reenviarSenhaAdmin(email,nome){
+  if(!email){alert('E-mail não disponível');return;}
+  if(!confirm(`Enviar link de recuperação de senha para:\n\n${nome}\n${email}\n\nA pessoa vai receber um e-mail com link para criar nova senha.`))return;
+  try{
+    const sb=getSB();
+    const redirectTo=window.location.origin+window.location.pathname;
+    const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo});
+    if(error)throw error;
+    alert(`✅ E-mail enviado para ${email}\n\nA pessoa precisa abrir o e-mail e clicar no link. Pode demorar até 5 minutos para chegar. Diga para verificar a pasta de spam.`);
+  }catch(e){alert('Erro ao enviar: '+e.message);}
+}
+
+// Remover acesso de admin (deleta do user_profiles — não deleta auth.users mas perde permissão)
+async function removerAdmin(userId,nome,email){
+  if(!confirm(`⚠️ Remover acesso de:\n\n${nome}\n${email}\n\nA pessoa NÃO conseguirá mais logar no sistema. A conta de e-mail dela continua existindo, mas perde todas as permissões. Continuar?`))return;
+  if(!confirm('Tem certeza? Esta ação não pode ser desfeita pelo painel.'))return;
+  try{
+    const sb=getSB();
+    const{error}=await sb.from('user_profiles').delete().eq('id',userId);
+    if(error)throw error;
+    alert(`✅ Acesso de ${nome} removido com sucesso.`);
     carregarListaAdmins();
   }catch(e){alert('Erro: '+e.message);}
 }
@@ -5128,7 +5160,9 @@ function salvarNovoFin(){
 let _npFoto=null;
 let _npOrigens=[];
 
-function openNovoPacForm(){
+let _npEditId=null;
+function openNovoPacForm(editId){
+  _npEditId=editId||null;
   _npFoto=null;
   _npOrigens=[];
   // Reset form
@@ -5140,6 +5174,36 @@ function openNovoPacForm(){
   document.getElementById('np-foto-preview').style.background='var(--tl4)';
   document.querySelectorAll('#np-origem button').forEach(b=>b.style.border='1.5px solid transparent');
   const indBox=document.getElementById('np-indicado-por-box');if(indBox)indBox.style.display='none';
+  // Se for edição, popula formulário
+  if(editId){
+    const p=LS.get('pacs').find(x=>x.id===editId);
+    if(p){
+      document.getElementById('np-nome').value=p.nome||'';
+      document.getElementById('np-tel').value=p.telefone||'';
+      document.getElementById('np-email').value=p.email||'';
+      document.getElementById('np-cpf').value=p.cpf||'';
+      document.getElementById('np-nasc').value=p.nascimento||'';
+      document.getElementById('np-queixa').value=p.queixa||'';
+      document.getElementById('np-stage').value=p.pipe_stage||'novo_lead';
+      const tagOrigem=(p.tags||[]).find(t=>t.cat==='origem' && ['Instagram','Indicação','Google','WhatsApp','Facebook','TikTok'].includes(t.label));
+      if(tagOrigem){
+        _npOrigens=[tagOrigem.label];
+        document.querySelectorAll('#np-origem button').forEach(b=>{
+          if(b.dataset.ori===tagOrigem.label)b.style.border='1.5px solid currentColor';
+        });
+        if(tagOrigem.label==='Indicação'){
+          document.getElementById('np-indicado-por').value=p.indicado_por||'';
+          document.getElementById('np-indicado-por-box').style.display='block';
+        }
+      }
+      if(p.foto){_npFoto=p.foto;document.getElementById('np-foto-preview').innerHTML=`<img src="${p.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>`;document.getElementById('np-foto-preview').style.background='transparent';}
+    }
+  }
+  // Atualiza título e botão do modal
+  const modalTitle=document.querySelector('#novo-pac-overlay [style*="font-size:16px"]');
+  if(modalTitle)modalTitle.textContent=editId?'Editar paciente':'Novo paciente';
+  const btnSalvar=document.querySelector('#novo-pac-overlay button[onclick="salvarNovoPac()"]');
+  if(btnSalvar)btnSalvar.innerHTML=editId?'💾 Salvar alterações':'💾 Cadastrar';
   document.getElementById('novo-pac-overlay').style.display='flex';
 }
 
@@ -5205,8 +5269,11 @@ function salvarNovoPac(){
   if(_npOrigens.includes('Indicação')&&indicadoPor){
     tagsOrigem.push({label:'Indicado por: '+indicadoPor,cor:'#0369a1',cat:'indicacao'});
   }
+  // Se for edição, mescla com paciente existente (preservando tags não-origem, fotos, etc)
+  const existente=_npEditId?LS.get('pacs').find(x=>x.id===_npEditId):null;
+  const tagsNaoOrigem=(existente?.tags||[]).filter(t=>t.cat!=='origem'&&t.cat!=='indicacao');
   const pac={
-    id:uid(),
+    id:_npEditId||uid(),
     nome,
     telefone:tel,
     email:document.getElementById('np-email').value.trim(),
@@ -5214,28 +5281,35 @@ function salvarNovoPac(){
     nascimento:document.getElementById('np-nasc').value,
     queixa:document.getElementById('np-queixa').value.trim(),
     pipe_stage:document.getElementById('np-stage').value,
-    foto:_npFoto||'',
-    tags:tagsOrigem,
+    foto:_npFoto||existente?.foto||'',
+    tags:[...tagsOrigem,...tagsNaoOrigem],
     indicado_por:indicadoPor,
-    criado:hhmm(),
-    exames:0,
-    fu_status:{},
-    fu_start_date:null,
-    followup_next_day:null,
-    ultimo_contato:todayISO()
+    criado:existente?.criado||hhmm(),
+    exames:existente?.exames||0,
+    fu_status:existente?.fu_status||{},
+    fu_start_date:existente?.fu_start_date||null,
+    followup_next_day:existente?.followup_next_day||null,
+    ultimo_contato:existente?.ultimo_contato||todayISO()
   };
-  LS.upsert('pacs',pac);
+  if(_npEditId){
+    LS.update('pacs',_npEditId,pac);
+  } else {
+    LS.upsert('pacs',pac);
+  }
+  const ehEdicao=!!_npEditId;
+  _npEditId=null;
   fecharNovoPac();
   // show success feedback and navigate
-  const msg=`✅ Paciente cadastrado!\n\n${pac.nome}\n${pac.telefone}`;
+  const msg=ehEdicao?`✅ Paciente atualizado!\n\n${pac.nome}\n${pac.telefone}`:`✅ Paciente cadastrado!\n\n${pac.nome}\n${pac.telefone}`;
   setTimeout(()=>{
-    if(confirm(msg+'\n\nAbrir ficha agora?')){
-      openDet(pac.id,2); // open on Anamnese tab to continue filling
+    if(!ehEdicao && confirm(msg+'\n\nAbrir ficha agora?')){
+      openDet(pac.id,2);
     } else {
-      // Just refresh current view
+      if(ehEdicao)alert(msg);
       if(curPage==='pg-pac')renderPacs();
       else if(curPage==='pg-pipe')renderPipeline();
       else if(curPage==='pg-home')renderHome();
+      else if(curPage==='pg-det')renderDet();
     }
   },100);
 }
@@ -5414,9 +5488,13 @@ function renderAnalytics(){
   const atrasadoRetorno=LS.get('prs').filter(p=>protoSt(p.proxima).cls==='red').length;
   const fuAtivos=pacs.filter(p=>p.fu_start_date).length;
   const podemRenovar=pacs.filter(p=>(p.pipe_stage||'')==='consulta_real'&&LS.get('prs').filter(r=>r.pac_id===p.id&&protoSt(r.proxima).urg).length>0).length;
+  // Pacientes por cidade
+  const pacsLimeira=pacs.filter(p=>(p.cidade_atend||'').toLowerCase().includes('limeira')).length;
+  const pacsArara=pacs.filter(p=>(p.cidade_atend||'').toLowerCase().includes('arara')).length;
   document.getElementById('analytics-stats').innerHTML=`
-    <div class="an-stat"><div class="an-n">R$${totalFat>=1000?(totalFat/1000).toFixed(1)+'k':totalFat.toFixed(0)}</div><div class="an-l">Faturamento total</div><div class="an-delta up">↑ 12% vs mês anterior</div></div>
-    <div class="an-stat"><div class="an-n">${totalCons}</div><div class="an-l">Consultas realizadas</div><div class="an-delta up">↑ 3 novas</div></div>
+    <div class="an-stat"><div class="an-n">${pacs.length}</div><div class="an-l">Total de pacientes</div><div class="an-delta up">📍 ${pacsLimeira} Limeira · ${pacsArara} Araraquara</div></div>
+    <div class="an-stat"><div class="an-n">R$${totalFat>=1000?(totalFat/1000).toFixed(1)+'k':totalFat.toFixed(0)}</div><div class="an-l">Faturamento total</div><div class="an-delta up">↑ atualizado em tempo real</div></div>
+    <div class="an-stat"><div class="an-n">${totalCons}</div><div class="an-l">Consultas realizadas</div><div class="an-delta up">↑ atualizado</div></div>
     <div class="an-stat"><div class="an-n">${txRetorno}%</div><div class="an-l">Taxa de retorno</div><div class="an-delta ${txRetorno>=50?'up':'down'}">${txRetorno>=50?'↑ Boa':'↓ Melhorar'}</div></div>
     <div class="an-stat"><div class="an-n">${travoramValor}</div><div class="an-l">Travaram por valor</div><div class="an-delta down">${travoramValor>0?'⚠️ Revisar':' ✅ Nenhum'}</div></div>
     <div class="an-stat"><div class="an-n">${indicacao}</div><div class="an-l">Por indicação</div><div class="an-delta up">${indicacao>0?'↑ '+indicacao+' leads':'—'}</div></div>
@@ -5454,8 +5532,9 @@ function renderAnalytics(){
   const consData=[3,5,6,2,7,6,totalCons||4];
   const urgN=prs.filter(p=>protoSt(p.proxima).urg).length;
   const okN=prs.filter(p=>!protoSt(p.proxima).urg).length;
-  const presN=ags.filter(a=>a.tipo==='presencial'&&a.status!=='cancelado').length;
-  const onlN=ags.filter(a=>a.tipo==='presencial-araraquara'&&a.status!=='cancelado').length;
+  // Modalidade conta pacientes por cidade (em vez de apenas consultas)
+  const presN=pacs.filter(p=>(p.cidade_atend||'').toLowerCase().includes('limeira')).length||ags.filter(a=>a.tipo==='presencial-limeira'&&a.status!=='cancelado').length;
+  const onlN=pacs.filter(p=>(p.cidade_atend||'').toLowerCase().includes('arara')).length||ags.filter(a=>a.tipo==='presencial-araraquara'&&a.status!=='cancelado').length;
   requestAnimationFrame(()=>{
     ['chart-fat','chart-cons','chart-proto','chart-modal'].forEach(id=>{if(_charts[id]){_charts[id].destroy();delete _charts[id];}});
     const isDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
@@ -5635,16 +5714,12 @@ function copiarLembrete(btn,agId){
   navigator.clipboard.writeText(msg).then(()=>{btn.textContent='✓ Copiado';setTimeout(()=>{btn.textContent='📋 Copiar'},1500);});
 }
 
-// ════════════════════════════════════════════
-//  PWA INSTALL
-// ════════════════════════════════════════════
+// PWA INSTALL
 let _pwaPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_pwaPrompt=e;window._pwaPrompt=e;const banner=document.getElementById('pwa-install');if(banner)banner.classList.add('show');});
 async function installPWA(){if(!_pwaPrompt)return;_pwaPrompt.prompt();const{outcome}=await _pwaPrompt.userChoice;if(outcome==='accepted'){document.getElementById('pwa-install').classList.remove('show');_pwaPrompt=null;}}
 
-// ════════════════════════════════════════════
-//  INIT
-// ════════════════════════════════════════════
+// INIT
 seedIfEmpty();
 (async()=>{
   if(USE_SB){
